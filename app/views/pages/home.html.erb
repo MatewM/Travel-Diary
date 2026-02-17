@@ -1,0 +1,184 @@
+<%# Contenedor principal: Flexbox para centrado absoluto %>
+<% city_images = Dir.glob(Rails.root.join("public", "images", "cities", "*.{jpg,jpeg,png,webp}")).map { |f| "/images/cities/#{File.basename(f)}" } %>
+<div style="min-height: 100vh; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; background: #0f172a;">
+
+  <%# === GRID MOSAICO DE CIUDADES (fondo) === %>
+  <div style="position: absolute; inset: 0; pointer-events: none; overflow: hidden;" data-controller="city-tiles" data-city-tiles-images-value="<%= city_images.to_json %>">
+    <%# Usamos Flexbox para dividir en 4 columnas independientes %>
+    <div style="display: flex; gap: 12px; padding: 12px; position: absolute; inset: -12px; height: calc(100% + 24px);">
+      
+      <%# --- COLUMNA 1: Animación hacia ARRIBA (6 tiles: 3 visibles + 3 duplicados) --- %>
+      <div style="flex: 1; position: relative; overflow: hidden;">
+        <div style="display: flex; flex-direction: column; gap: 12px; animation: scrollUp 25s ease-in-out infinite alternate; height: 200%;">
+          <%# Bloque original (3 tiles) %>
+          <div data-city-tiles-target="tile" data-tile-id="c1-1" style="flex: 1; border-radius: 12px; overflow: hidden; transition: opacity 3s ease-in-out;">
+            <img src="" alt="" loading="lazy" style="width: 100%; height: 100%; object-fit: cover; display: block;" />
+          </div>
+          <div data-city-tiles-target="tile" data-tile-id="c1-2" style="flex: 1; border-radius: 12px; overflow: hidden; transition: opacity 3s ease-in-out;">
+            <img src="" alt="" loading="lazy" style="width: 100%; height: 100%; object-fit: cover; display: block;" />
+          </div>
+          <div data-city-tiles-target="tile" data-tile-id="c1-3" style="flex: 1; border-radius: 12px; overflow: hidden; transition: opacity 3s ease-in-out;">
+            <img src="" alt="" loading="lazy" style="width: 100%; height: 100%; object-fit: cover; display: block;" />
+          </div>
+          <%# Bloque duplicado (3 tiles) para loop infinito - Mismos IDs para sincronizar %>
+          <div data-city-tiles-target="tile" data-tile-id="c1-1" style="flex: 1; border-radius: 12px; overflow: hidden; transition: opacity 3s ease-in-out;">
+            <img src="" alt="" loading="lazy" style="width: 100%; height: 100%; object-fit: cover; display: block;" />
+          </div>
+          <div data-city-tiles-target="tile" data-tile-id="c1-2" style="flex: 1; border-radius: 12px; overflow: hidden; transition: opacity 3s ease-in-out;">
+            <img src="" alt="" loading="lazy" style="width: 100%; height: 100%; object-fit: cover; display: block;" />
+          </div>
+          <div data-city-tiles-target="tile" data-tile-id="c1-3" style="flex: 1; border-radius: 12px; overflow: hidden; transition: opacity 3s ease-in-out;">
+            <img src="" alt="" loading="lazy" style="width: 100%; height: 100%; object-fit: cover; display: block;" />
+          </div>
+        </div>
+      </div>
+
+      <%# --- COLUMNA 2: Fija (2 tiles verticales altos) --- %>
+      <div style="flex: 1; display: flex; flex-direction: column; gap: 12px;">
+        <div data-city-tiles-target="tile" style="flex: 1; border-radius: 12px; overflow: hidden; transition: opacity 3s ease-in-out;">
+          <img src="" alt="" loading="lazy" style="width: 100%; height: 100%; object-fit: cover; display: block;" />
+        </div>
+        <div data-city-tiles-target="tile" style="flex: 1; border-radius: 12px; overflow: hidden; transition: opacity 3s ease-in-out;">
+          <img src="" alt="" loading="lazy" style="width: 100%; height: 100%; object-fit: cover; display: block;" />
+        </div>
+      </div>
+
+      <%# --- COLUMNA 3: Animación hacia ABAJO (4 tiles: 2 visibles + 2 duplicados) --- %>
+      <div style="flex: 1; position: relative; overflow: hidden;">
+        <div style="display: flex; flex-direction: column; gap: 12px; animation: scrollDown 45s ease-in-out infinite alternate; height: 200%;">
+          <%# Bloque duplicado (arriba) - Mismos IDs que abajo %>
+          <div data-city-tiles-target="tile" data-tile-id="c3-1" style="flex: 1; border-radius: 12px; overflow: hidden; transition: opacity 3s ease-in-out;">
+            <img src="" alt="" loading="lazy" style="width: 100%; height: 100%; object-fit: cover; display: block;" />
+          </div>
+          <div data-city-tiles-target="tile" data-tile-id="c3-2" style="flex: 1; border-radius: 12px; overflow: hidden; transition: opacity 3s ease-in-out;">
+            <img src="" alt="" loading="lazy" style="width: 100%; height: 100%; object-fit: cover; display: block;" />
+          </div>
+          <%# Bloque original (abajo) %>
+          <div data-city-tiles-target="tile" data-tile-id="c3-1" style="flex: 1; border-radius: 12px; overflow: hidden; transition: opacity 3s ease-in-out;">
+            <img src="" alt="" loading="lazy" style="width: 100%; height: 100%; object-fit: cover; display: block;" />
+          </div>
+          <div data-city-tiles-target="tile" data-tile-id="c3-2" style="flex: 1; border-radius: 12px; overflow: hidden; transition: opacity 3s ease-in-out;">
+            <img src="" alt="" loading="lazy" style="width: 100%; height: 100%; object-fit: cover; display: block;" />
+          </div>
+        </div>
+      </div>
+
+      <%# --- COLUMNA 4: Fija (3 tiles) --- %>
+      <div style="flex: 1; display: flex; flex-direction: column; gap: 12px;">
+        <div data-city-tiles-target="tile" style="flex: 1; border-radius: 12px; overflow: hidden; transition: opacity 3s ease-in-out;">
+          <img src="" alt="" loading="lazy" style="width: 100%; height: 100%; object-fit: cover; display: block;" />
+        </div>
+        <div data-city-tiles-target="tile" style="flex: 1; border-radius: 12px; overflow: hidden; transition: opacity 3s ease-in-out;">
+          <img src="" alt="" loading="lazy" style="width: 100%; height: 100%; object-fit: cover; display: block;" />
+        </div>
+        <div data-city-tiles-target="tile" style="flex: 1; border-radius: 12px; overflow: hidden; transition: opacity 3s ease-in-out;">
+          <img src="" alt="" loading="lazy" style="width: 100%; height: 100%; object-fit: cover; display: block;" />
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <%# Overlay oscuro %>
+  <div style="position: absolute; inset: 0; pointer-events: none; background: radial-gradient(circle at center, rgba(15, 23, 42, 0.15) 0%, rgba(15, 23, 42, 0.60) 100%);"></div>
+
+  <%# === TARJETA GLASSMÓRFICA === %>
+  <div style="width: 420px; max-width: 90%; position: relative; z-index: 10; padding: 30px 32px 32px 32px; background: rgba(255, 255, 255, 0.45); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border-radius: 28px; box-shadow: 0 20px 60px -10px rgba(0, 0, 0, 0.5);">
+
+    <%# Logo recortado circularmente y fusionado %>
+    <div style="display: flex; justify-content: center; margin-bottom: 20px; margin-left: 15px; position: relative; z-index: 20; overflow: visible;">
+      <%= image_tag "logo-expats.png", alt: "Travel Diary", style: "width: 300px; height: 300px; object-fit: contain; margin-top: -70px; margin-bottom: 0; mix-blend-mode: multiply;" %>
+    </div>
+
+    <%# Título y subtítulo %>
+    <div style="text-align: center; margin-bottom: 16px;">
+      <h1 style="font-family: sans-serif; font-weight: 700; color: #0f172a; font-size: 2.25rem; letter-spacing: -0.02em; margin: 0;">
+        Travel Diary
+      </h1>
+      <p style="font-family: sans-serif; margin-top: 4px; color: #475569; font-weight: 500; font-size: 0.9rem;">
+        Guarda tus viajes y descubre el mundo
+      </p>
+    </div>
+
+    <%# Botones OAuth - Usan button_to para generar formularios POST reales (requerido por omniauth-rails_csrf_protection) %>
+    <div style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px;">
+      <%= button_to user_google_oauth2_omniauth_authorize_path, data: { turbo: false },
+          form: { style: "display: contents;" },
+          style: "display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; padding: 10px 24px; border-radius: 9999px; font-weight: 600; cursor: pointer; background: #ffffff; border: 1px solid #e2e8f0; color: #1e293b; font-size: 0.9rem; font-family: system-ui, -apple-system, sans-serif; box-shadow: 0 1px 2px rgba(0,0,0,0.05); transition: background 0.2s;" do %>
+        <svg style="width: 18px; height: 18px;" viewBox="0 0 24 24">
+          <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+          <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+          <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+          <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+        </svg>
+        Continuar con Google
+      <% end %>
+
+      <%= button_to user_apple_omniauth_authorize_path, data: { turbo: false },
+          form: { style: "display: contents;" },
+          style: "display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; padding: 10px 24px; border-radius: 9999px; font-weight: 600; cursor: pointer; background: #000000; color: #ffffff; border: 1px solid #000000; font-size: 0.9rem; font-family: system-ui, -apple-system, sans-serif; transition: background 0.2s;" do %>
+        <svg style="width: 18px; height: 18px;" viewBox="0 0 24 24" fill="white">
+          <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09l.01-.01zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
+        </svg>
+        Continuar con Apple
+      <% end %>
+    </div>
+
+    <%# Formulario email/contraseña %>
+    <%= form_with url: new_user_session_path, local: true, style: "display: flex; flex-direction: column;" do |f| %>
+      <div style="position: relative; margin-bottom: 8px;">
+        <div style="position: absolute; top: 0; bottom: 0; left: 0; padding-left: 16px; display: flex; align-items: center; pointer-events: none; color: #94a3b8;">
+          <svg xmlns="http://www.w3.org/2000/svg" style="width: 18px; height: 18px;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+          </svg>
+        </div>
+        <%= f.email_field :email, id: "email", autofocus: true, placeholder: "Correo electrónico",
+            style: "width: 100%; padding: 10px 16px 10px 40px; border-radius: 12px; outline: none; transition: all 0.2s; font-weight: 500; background: #f1f5f9; border: 1px solid transparent; color: #334155; font-family: sans-serif; font-size: 0.95rem;" %>
+      </div>
+
+      <div style="position: relative;">
+        <div style="position: absolute; top: 0; bottom: 0; left: 0; padding-left: 16px; display: flex; align-items: center; pointer-events: none; color: #94a3b8;">
+          <svg xmlns="http://www.w3.org/2000/svg" style="width: 18px; height: 18px;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+          </svg>
+        </div>
+        <%= f.password_field :password, id: "password", placeholder: "Contraseña",
+            style: "width: 100%; padding: 10px 64px 10px 40px; border-radius: 12px; outline: none; transition: all 0.2s; font-weight: 500; background: #f1f5f9; border: 1px solid transparent; color: #334155; font-family: sans-serif; font-size: 0.95rem;" %>
+        <button type="button" style="position: absolute; top: 0; bottom: 0; right: 0; padding-right: 16px; display: flex; align-items: center; font-size: 0.8rem; font-weight: 600; color: #64748b; background: none; border: none; cursor: pointer;">
+          Mostrar
+        </button>
+      </div>
+
+      <div style="display: flex; align-items: center; justify-content: space-between; font-size: 0.8rem; padding: 2px 0;">
+        <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; color: #475569; font-weight: 500;">
+          <%= f.check_box :remember_me, style: "width: 14px; height: 14px; border-radius: 4px; border: 1px solid #cbd5e1; color: #2563eb;" %>
+          Recordarme
+        </label>
+        <%= link_to "¿Olvidaste tu contraseña?", new_user_password_path, style: "color: #2563eb; text-decoration: none; font-weight: 600;" %>
+      </div>
+
+      <%= f.submit "Iniciar sesión",
+          style: "width: 100%; padding: 10px 24px; border-radius: 9999px; font-weight: 700; color: white; background: #2563eb; border: none; font-size: 0.95rem; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3); cursor: pointer; transition: background 0.2s; margin-top: 6px;" %>
+    <% end %>
+  </div>
+</div>
+
+<style>
+  body { margin: 0; font-family: system-ui, -apple-system, sans-serif; }
+  input:focus {
+    background: #ffffff !important;
+    border-color: #cbd5e1 !important;
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1) !important;
+  }
+  a:hover { opacity: 0.9; }
+  button:hover { color: #334155 !important; }
+
+  @keyframes scrollUp {
+    from { transform: translateY(0); }
+    to { transform: translateY(-50%); }
+  }
+  @keyframes scrollDown {
+    from { transform: translateY(-50%); }
+    to { transform: translateY(0); }
+  }
+</style>

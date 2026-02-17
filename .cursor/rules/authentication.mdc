@@ -1,0 +1,74 @@
+---
+description: Sistema de Autenticación Multi-Proveedor
+globs:
+  - app/controllers/sessions_controller.rb
+  - app/controllers/registrations_controller.rb
+  - app/controllers/omniauth_callbacks_controller.rb
+  - app/models/user.rb
+  - app/models/identity.rb
+autoAttach: true
+---
+
+## Arquitectura de Autenticación
+
+### Modelos
+- **User**: Modelo principal de usuario
+- **Identity**: Para múltiples métodos de login por usuario (Google, Apple, Email)
+
+### Relación
+```ruby
+User has_many :identities
+Identity belongs_to :user
+```
+
+### Campos User
+- email (string, único, índice)
+- name (string)
+- avatar_url (string)
+- created_at, updated_at
+
+### Campos Identity
+- user_id (foreign key)
+- provider (string: 'google', 'apple', 'email')
+- uid (string: ID del proveedor)
+- token (text: OAuth token, encriptado)
+- refresh_token (text, encriptado)
+- expires_at (datetime)
+
+## Flujo de Autenticación
+
+### Registro/Login con OAuth
+1. Usuario hace clic en "Continuar con Google/Apple"
+2. Redirección a proveedor OAuth
+3. Callback recibe datos del usuario
+4. Buscar o crear User por email
+5. Crear/actualizar Identity asociada
+6. Establecer sesión
+7. Redirigir a dashboard
+
+### Registro/Login con Email
+1. Usuario ingresa email y contraseña
+2. Validar credenciales
+3. Crear User si no existe
+4. Crear Identity con provider='email'
+5. Establecer sesión
+6. Redirigir a dashboard
+
+## Seguridad
+- Encriptar tokens OAuth con attr_encrypted o Rails credentials
+- Usar secure: true, httponly: true para cookies de sesión
+- Implementar rate limiting en login (rack-attack)
+- CSRF protection habilitado
+- Validar email format con regex estricto
+- Password mínimo 8 caracteres (si usamos email/password)
+
+## Callbacks OmniAuth
+- Manejar fallos de autenticación con mensajes claros
+- Logging de intentos de login (éxito y fallo)
+- Prevenir race conditions en creación de usuarios
+
+## Vistas
+- Landing page minimalista estilo Google
+- Botones OAuth con branding oficial (logos de Google/Apple)
+- Formulario de email/password simple y limpio
+- Mensajes de error claros en español

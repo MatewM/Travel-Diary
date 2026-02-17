@@ -1,0 +1,107 @@
+---
+description: Lógica de Negocio del Diario de Viajes
+globs:
+  - app/models/trip.rb
+  - app/models/ticket.rb
+  - app/models/country.rb
+  - app/services/**/*
+autoAttach: true
+---
+
+## Modelos Principales
+
+### Trip (Viaje)
+- user_id (belongs_to :user)
+- title (string, opcional, autogenerado si vacío)
+- start_date (date)
+- end_date (date)
+- notes (text)
+- timestamps
+
+### Ticket (Billete de Avión)
+- trip_id (belongs_to :trip)
+- user_id (belongs_to :user, para billetes sin trip asignado aún)
+- flight_number (string)
+- airline (string)
+- departure_airport (string, código IATA)
+- arrival_airport (string, código IATA)
+- departure_date (datetime)
+- arrival_date (datetime)
+- departure_country_id (belongs_to :country)
+- arrival_country_id (belongs_to :country)
+- original_file (ActiveStorage attachment)
+- status (enum: 'pending_parse', 'parsed', 'manual', 'error')
+- timestamps
+
+### Country (País)
+- name (string)
+- code (string, ISO 3166-1 alpha-2)
+- continent (string)
+
+### Visit (Visita a País, tabla intermedia)
+- user_id
+- country_id
+- visited_at (date)
+- trip_id (opcional)
+- Índice único: [user_id, country_id, visited_at]
+
+## Servicios
+
+### ParseTicketService
+**Responsabilidad**: Extraer información del billete subido (imagen/PDF)
+
+**Entrada**: archivo ActiveStorage attachment
+
+**Proceso**:
+1. Detectar tipo de archivo (imagen/PDF)
+2. Usar OCR o librería de parsing (pdf-reader, tesseract)
+3. Extraer: vuelo, aerolínea, aeropuertos, fechas
+4. Buscar códigos IATA para identificar países
+5. Crear registro Ticket con status='parsed'
+
+**Salida**: Objeto Ticket o errores de parsing
+
+### CreateTripFromTicketsService
+**Responsabilidad**: Agrupar billetes en un viaje
+
+**Entrada**: array de ticket_ids, user
+
+**Proceso**:
+1. Validar que todos los tickets pertenecen al usuario
+2. Calcular start_date (min de departure_dates)
+3. Calcular end_date (max de arrival_dates)
+4. Generar título automático: "Viaje a [países] - [mes año]"
+5. Asociar tickets al trip
+6. Crear registros Visit para cada país único
+
+**Salida**: Objeto Trip creado
+
+## Reglas de Negocio
+
+### Parsing de Billetes
+- Si parsing falla, marcar status='error' y permitir entrada manual
+- Soportar múltiples formatos: PDF, JPG, PNG
+- Timeout de parsing: 30 segundos máximo
+- Guardar siempre el archivo original
+
+### Países y Aeropuertos
+- Usar base de datos de códigos IATA estándar
+- Mapear aeropuerto → ciudad → país
+- Seed inicial con países y principales aeropuertos
+
+### Viajes
+- Un billete puede pertenecer a un solo Trip
+- Un Trip puede tener múltiples Tickets
+- Permitir edición manual de fechas y países
+- Auto-generar título basado en destinos
+
+### Estadísticas
+- Calcular países únicos visitados por usuario
+- Agrupar por continentes
+- Timeline de viajes (ordenado por fecha)
+
+## Validaciones
+- Ticket: departure_date debe ser anterior a arrival_date
+- Trip: start_date debe ser anterior o igual a end_date
+- Airport codes deben ser 3 letras mayúsculas (IATA format)
+- Archivos: máximo 10MB, formatos permitidos: PDF, JPG, PNG
