@@ -34,16 +34,17 @@
           Generar Informe PDF
         </button>
 
-        <button onclick="document.getElementById('upload-modal').classList.remove('hidden')"
-                class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg
-                       shadow-md shadow-indigo-200 flex items-center gap-2 text-sm font-medium
-                       transition-colors whitespace-nowrap">
+        <%= link_to new_ticket_path,
+              data: { turbo_frame: "modal" },
+              class: "bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg
+                      shadow-md shadow-indigo-200 flex items-center gap-2 text-sm font-medium
+                      transition-colors whitespace-nowrap" do %>
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                   d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
           </svg>
           Subir Billetes
-        </button>
+        <% end %>
       </div>
 
     </header>
@@ -109,7 +110,31 @@
     </div>
     <!-- /PLACEHOLDER -->
 
-    <%# --- 3. TABLA DE VIAJES --- %>
+    <%# --- 3. BILLETES SUBIDOS --- %>
+    <% if @tickets.any? %>
+      <div class="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden mb-6">
+
+        <div id="tickets_section_header"
+             class="px-6 py-4 bg-slate-50/50 border-b border-slate-200 flex items-center justify-between">
+          <h2 class="text-xs font-bold text-slate-400 uppercase tracking-wider">Billetes Subidos</h2>
+          <span class="text-xs text-slate-400">Pendientes de procesar</span>
+        </div>
+
+        <div id="tickets_list">
+          <%= render @tickets %>
+        </div>
+
+      </div>
+    <% else %>
+      <%# Sección vacía — los Turbo Streams actualizan estos IDs aunque estén ocultos %>
+      <div class="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden mb-6 hidden"
+           id="tickets_empty_section">
+        <div id="tickets_section_header"></div>
+        <div id="tickets_list"></div>
+      </div>
+    <% end %>
+
+    <%# --- 4. TABLA DE VIAJES --- %>
     <div class="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
 
       <div class="px-6 py-4 bg-slate-50/50 border-b border-slate-200 flex items-center justify-between">
@@ -167,11 +192,11 @@
           </svg>
           <p class="text-base font-semibold text-slate-500 mb-1">No tienes viajes registrados.</p>
           <p class="text-sm text-slate-400 mb-6">Sube tus billetes para empezar a organizar tu diario.</p>
-          <button onclick="document.getElementById('upload-modal').classList.remove('hidden')"
-                  class="border border-slate-200 text-slate-600 rounded-lg px-4 py-2 text-sm
-                         font-medium hover:bg-slate-50 transition-colors">
-            Subir tu primer billete
-          </button>
+          <%= link_to "Subir tu primer billete",
+                new_ticket_path,
+                data: { turbo_frame: "modal" },
+                class: "border border-slate-200 text-slate-600 rounded-lg px-4 py-2 text-sm
+                        font-medium hover:bg-slate-50 transition-colors" %>
         </div>
       <% end %>
 
@@ -184,51 +209,5 @@
 </div>
 <%# /min-h-screen %>
 
-<%# === MODAL DE SUBIDA === %>
-<div id="upload-modal"
-     class="fixed inset-0 z-50 hidden overflow-y-auto"
-     aria-labelledby="modal-title" role="dialog" aria-modal="true">
-
-  <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-
-    <%# Overlay %>
-    <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity"
-         aria-hidden="true"
-         onclick="document.getElementById('upload-modal').classList.add('hidden')"></div>
-
-    <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-
-    <%# Panel %>
-    <div class="inline-block align-bottom bg-white rounded-2xl text-left overflow-hidden
-                shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg w-full">
-      <div class="px-6 pt-6 pb-5">
-
-        <%# Cabecera del modal %>
-        <div class="flex items-center justify-between mb-4">
-          <h3 class="text-lg font-semibold text-slate-900" id="modal-title">Registrar Nuevo Viaje</h3>
-          <button onclick="document.getElementById('upload-modal').classList.add('hidden')"
-                  class="text-slate-400 hover:text-slate-600 transition-colors">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-            </svg>
-          </button>
-        </div>
-
-        <p class="text-sm text-slate-500 mb-6">Funcionalidad pendiente de implementar (migración de trips).</p>
-
-        <%# Botón cerrar %>
-        <div class="flex justify-end">
-          <button type="button"
-                  class="border border-slate-200 text-slate-700 rounded-lg px-4 py-2 text-sm
-                         font-medium hover:bg-slate-50 transition-colors"
-                  onclick="document.getElementById('upload-modal').classList.add('hidden')">
-            Cerrar
-          </button>
-        </div>
-
-      </div>
-    </div>
-
-  </div>
-</div>
-<%# /Modal %>
+<%# === TURBO FRAME PARA EL MODAL (inicialmente vacío) === %>
+<%= turbo_frame_tag "modal" %>

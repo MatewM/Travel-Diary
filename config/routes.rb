@@ -11,4 +11,6 @@ Rails.application.routes.draw do
   root "pages#home"
 
   get "dashboard", to: "dashboard#show", as: :dashboard
+
+  resources :tickets, only: %i[new create]
 end

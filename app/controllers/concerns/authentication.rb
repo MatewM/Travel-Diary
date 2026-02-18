@@ -5,7 +5,7 @@ module Authentication
 
   included do
     before_action :require_authentication
-    helper_method :authenticated?, :current_user
+    helper_method :authenticated?, :current_user, :user_signed_in?
   end
 
   class_methods do
@@ -19,6 +19,8 @@ module Authentication
   def authenticated?
     Current.session.present?
   end
+
+  alias_method :user_signed_in?, :authenticated?
 
   def current_user
     Current.user
