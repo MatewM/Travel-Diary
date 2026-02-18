@@ -1,0 +1,37 @@
+---
+description: Contexto general del proyecto TaxDays
+alwaysApply: true
+---
+
+# TaxDays — Contexto del Proyecto
+
+## Qué es
+Web app SaaS para expats que automatiza el seguimiento de días de residencia fiscal por país y año natural. El valor principal es la extracción automática de datos desde billetes de avión subidos por el usuario, minimizando entrada manual.
+
+## Stack
+- Ruby on Rails 8 (backend + frontend integrado)
+- Ruby 3.2+
+- PostgreSQL
+- Hotwire (Turbo + Stimulus) — NO usar React ni JS pesado
+- TailwindCSS 3
+- ActiveStorage (gestión de billetes en PDF/imagen)
+- ViewComponent (componentes UI reutilizables)
+
+## Principios de desarrollo
+- App para un solo desarrollador aprendiendo: priorizar claridad sobre cleverness
+- Seguir convenciones Rails estrictamente (Convention over Configuration)
+- Mínima dependencia de gems externas; usar lo que Rails provee primero
+- Toda lógica de negocio en Service Objects, no en modelos ni controladores
+- Los controladores deben ser delgados (thin controllers)
+-Este proyecto tiene documentación en docs/. Cuando el usuario te pida trabajar en la base de datos, lee @docs/schema.md
+
+## Seguridad
+- Los datos de viajes y billetes son información fiscal sensible
+- Nunca exponer IDs internos de base de datos en URLs (usar UUIDs o slugs)
+- Autenticación obligatoria en todas las rutas excepto login/registro
+- Los archivos subidos (billetes) solo accesibles por el usuario propietario
+
+## Lo que NO hacer
+- No usar JavaScript vanilla ni jQuery
+- No crear lógica en las vistas (.erb)
+- No saltarse validaciones "para probar rápido"

@@ -10,9 +10,10 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_02_17_172745) do
+ActiveRecord::Schema[8.1].define(version: 2026_02_18_110512) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
+  enable_extension "pgcrypto"
 
   create_table "active_storage_attachments", force: :cascade do |t|
     t.bigint "blob_id", null: false
@@ -42,46 +43,52 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_17_172745) do
     t.index ["blob_id", "variation_digest"], name: "index_active_storage_variant_records_uniqueness", unique: true
   end
 
-  create_table "identities", force: :cascade do |t|
+  create_table "airports", force: :cascade do |t|
+    t.string "city"
+    t.bigint "country_id", null: false
     t.datetime "created_at", null: false
-    t.datetime "expires_at"
-    t.string "provider", null: false
-    t.text "refresh_token"
-    t.text "token"
-    t.string "uid", null: false
+    t.string "iata_code", null: false
+    t.string "name", null: false
     t.datetime "updated_at", null: false
-    t.bigint "user_id", null: false
-    t.index ["provider", "uid"], name: "index_identities_on_provider_and_uid", unique: true
-    t.index ["user_id"], name: "index_identities_on_user_id"
+    t.index ["country_id"], name: "index_airports_on_country_id"
+    t.index ["iata_code"], name: "index_airports_on_iata_code", unique: true
   end
 
-  create_table "trips", force: :cascade do |t|
-    t.string "country"
+  create_table "countries", force: :cascade do |t|
+    t.string "code", null: false
+    t.string "continent"
     t.datetime "created_at", null: false
-    t.string "destination"
-    t.date "end_date"
-    t.date "start_date"
+    t.integer "max_days_allowed", default: 183
+    t.integer "min_days_required"
+    t.string "name", null: false
     t.datetime "updated_at", null: false
-    t.bigint "user_id", null: false
-    t.index ["user_id"], name: "index_trips_on_user_id"
+    t.index ["code"], name: "index_countries_on_code", unique: true
   end
 
-  create_table "users", force: :cascade do |t|
+  create_table "sessions", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "ip_address"
+    t.datetime "updated_at", null: false
+    t.string "user_agent"
+    t.uuid "user_id", null: false
+    t.index ["user_id"], name: "index_sessions_on_user_id"
+  end
+
+  create_table "users", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.string "avatar_url"
     t.datetime "created_at", null: false
-    t.string "email", default: "", null: false
-    t.string "encrypted_password"
-    t.string "name"
-    t.datetime "remember_created_at"
-    t.datetime "reset_password_sent_at"
-    t.string "reset_password_token"
+    t.string "email", null: false
+    t.string "name", null: false
+    t.string "password_digest"
+    t.string "provider", default: "email", null: false
+    t.string "uid"
     t.datetime "updated_at", null: false
     t.index ["email"], name: "index_users_on_email", unique: true
-    t.index ["reset_password_token"], name: "index_users_on_reset_password_token", unique: true
+    t.index ["provider", "uid"], name: "index_users_on_provider_and_uid"
   end
 
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
-  add_foreign_key "identities", "users"
-  add_foreign_key "trips", "users"
+  add_foreign_key "airports", "countries"
+  add_foreign_key "sessions", "users"
 end

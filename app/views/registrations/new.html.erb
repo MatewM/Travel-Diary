@@ -1,0 +1,50 @@
+<div style="min-height: 100vh; display: flex; align-items: center; justify-content: center; background: #0f172a;">
+  <div style="width: 420px; max-width: 90%; padding: 40px 32px; background: rgba(255, 255, 255, 0.95); border-radius: 28px; box-shadow: 0 20px 60px -10px rgba(0, 0, 0, 0.5);">
+
+    <div style="text-align: center; margin-bottom: 24px;">
+      <h1 style="font-family: sans-serif; font-weight: 700; color: #0f172a; font-size: 1.75rem; letter-spacing: -0.02em; margin: 0;">
+        Crear cuenta
+      </h1>
+    </div>
+
+    <% if @user.errors.any? %>
+      <div class="mb-4 p-3 rounded-lg bg-red-50 text-red-700 text-sm">
+        <ul class="list-disc pl-4">
+          <% @user.errors.full_messages.each do |message| %>
+            <li><%= message %></li>
+          <% end %>
+        </ul>
+      </div>
+    <% end %>
+
+    <%= form_with model: @user, url: registration_path, local: true, style: "display: flex; flex-direction: column; gap: 12px;" do |f| %>
+      <div>
+        <%= f.text_field :name, autofocus: true, placeholder: "Nombre completo", required: true,
+            class: "w-full px-4 py-3 rounded-xl bg-slate-100 border border-transparent focus:bg-white focus:border-slate-300 focus:ring-2 focus:ring-blue-100 outline-none text-sm font-medium text-slate-700 transition-all" %>
+      </div>
+
+      <div>
+        <%= f.email_field :email, placeholder: "Correo electronico", required: true,
+            class: "w-full px-4 py-3 rounded-xl bg-slate-100 border border-transparent focus:bg-white focus:border-slate-300 focus:ring-2 focus:ring-blue-100 outline-none text-sm font-medium text-slate-700 transition-all" %>
+      </div>
+
+      <div>
+        <%= f.password_field :password, placeholder: "Contrasena (minimo 8 caracteres)", required: true,
+            class: "w-full px-4 py-3 rounded-xl bg-slate-100 border border-transparent focus:bg-white focus:border-slate-300 focus:ring-2 focus:ring-blue-100 outline-none text-sm font-medium text-slate-700 transition-all" %>
+      </div>
+
+      <div>
+        <%= f.password_field :password_confirmation, placeholder: "Confirmar contrasena", required: true,
+            class: "w-full px-4 py-3 rounded-xl bg-slate-100 border border-transparent focus:bg-white focus:border-slate-300 focus:ring-2 focus:ring-blue-100 outline-none text-sm font-medium text-slate-700 transition-all" %>
+      </div>
+
+      <%= f.submit "Crear cuenta",
+          class: "w-full py-3 rounded-full font-bold text-white bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-600/30 cursor-pointer transition-colors text-sm" %>
+    <% end %>
+
+    <div style="text-align: center; margin-top: 16px;">
+      <%= link_to "Ya tengo cuenta", new_session_path,
+          style: "color: #2563eb; text-decoration: none; font-weight: 600; font-size: 0.9rem;" %>
+    </div>
+  </div>
+</div>

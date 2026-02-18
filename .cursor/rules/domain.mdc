@@ -1,0 +1,123 @@
+---
+description: Modelos de dominio, servicios y reglas de negocio de TaxDays
+alwaysApply: false
+globs:
+  - "app/models/**/*"
+  - "app/services/**/*"
+---
+
+# Dominio de TaxDays
+
+## Modelos
+
+### User
+- Autenticado via Google, Apple ID o registro propio
+- uuid como primary key
+- email, name, provider (enum: email/google/apple), timestamps
+
+### Trip (Viaje entre dos países)
+- user_id, uuid pk
+- origin_country_id (belongs_to :country)
+- destination_country_id (belongs_to :country)
+- departure_date (date) — día que sale del país origen
+- arrival_date (date) — día que llega al país destino
+- title (string, autogenerado si vacío)
+- notes (text), timestamps
+- **Regla:** los días en destination_country se calculan desde arrival_date
+  hasta el departure_date del siguiente Trip
+
+### Trip — campo adicional
+- transport_type (enum: flight / train / car / ship / other / unknown)
+  — default: flight
+- has_boarding_pass (boolean, default: false)
+  — true si tiene al menos un Ticket vinculado con archivo adjunto
+- manually_entered (boolean, default: false)
+  — true si el usuario introdujo las fechas a mano sin billete
+
+### GapPeriod (concepto calculado, NO tabla en BD)
+**No crear tabla.** Los huecos se calculan en runtime:
+
+  GapDetectorService.call(user:, year:)
+    trips_del_año = user.trips ordenados por departure_date
+    fechas_cubiertas = union de rangos [arrival_date..siguiente_departure_date]
+    huecos = días del año NO cubiertos por ningún trip
+    return array de rangos {start_date:, end_date:, days_count:}
+
+Los huecos se muestran en el dashboard como filas vacías con botón
+"Añadir período manualmente" entre los trips existentes.
+
+### Ticket (Billete de avión)
+- trip_id (belongs_to :trip, optional al crear)
+- user_id (belongs_to :user)
+- flight_number, airline (string)
+- departure_airport, arrival_airport (string, código IATA 3 letras mayúsculas)
+- departure_datetime, arrival_datetime (datetime)
+- departure_country_id, arrival_country_id (belongs_to :country)
+- original_file (ActiveStorage attachment)
+- status (enum: pending_parse / parsed / manual / error)
+- parsed_data (jsonb) — metadatos crudos extraídos por OCR
+- timestamps
+
+### Country
+- name, code (ISO 3166-1 alpha-2), continent
+- min_days_required (integer, días mínimos para residencia fiscal, default: null)
+- max_days_allowed (integer, ej: 183 para regla de presencia)
+
+## Cálculo de días por país (lógica central)
+
+**NO usar tabla Visit con una fila por día.**
+Calcular siempre desde los rangos de Trip:
+
+DaysInCountryService.call(user:, country:, year:)
+trips = user.trips
+.where(destination_country: country)
+.where("EXTRACT(year FROM arrival_date) = ?", year)
+.or(trips que empezaron el año anterior y continúan en 'year')
+
+para cada trip:
+start = [arrival_date, Date.new(year, 1, 1)].max
+end = [siguiente_trip.departure_date - 1, Date.new(year, 12, 31)].min
+dias += (end - start).to_i + 1
+
+return total dias
+
+
+## Servicios
+
+### ParseTicketService
+- Entrada: ActiveStorage attachment (PDF/JPG/PNG)
+- Proceso: detectar tipo → OCR/pdf-reader → extraer vuelo, aeropuertos, fechas
+  → buscar país por código IATA → crear Ticket(status: :parsed)
+- Si falla: status: :error, permitir entrada manual
+- Timeout: 30 segundos. Guardar siempre el archivo original.
+- Guardar resultado crudo en parsed_data (jsonb) para debugging
+
+### CreateTripFromTicketsService
+- Entrada: array de ticket_ids, user
+- Proceso: validar ownership → calcular start/end dates → generar título
+  "Viaje a [país destino] - [mes año]" → asociar tickets → crear Trip
+- Salida: Trip o errores
+
+- Si el usuario crea un Trip manualmente (sin ticket):
+  - manually_entered: true
+  - has_boarding_pass: false
+  - transport_type: el que indique el usuario
+  - Validar igualmente departure_date < arrival_date
+
+### GenerateFiscalReportService
+- Entrada: user, year
+- Proceso: recopilar trips del año → calcular días por país →
+  recopilar tickets vinculados (con sus archivos) →
+  generar PDF con tabla de días + links/imágenes de billetes como prueba
+- Salida: PDF descargable
+
+- Incluir en el PDF los períodos sin documentación (gaps) marcados
+  claramente como "Sin justificante" para que el usuario sepa
+  qué períodos le faltan antes de entregar a las autoridades
+
+## Validaciones
+- Ticket: departure_datetime anterior a arrival_datetime
+- Trip: departure_date anterior o igual a arrival_date
+- Airport codes: exactamente 3 letras mayúsculas (IATA)
+- Archivos: máximo 10MB, solo PDF/JPG/PNG
+- Un ticket pertenece a un solo Trip máximo

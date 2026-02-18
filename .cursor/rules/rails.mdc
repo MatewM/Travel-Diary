@@ -1,0 +1,41 @@
+---
+description: Convenciones Rails para TaxDays
+alwaysApply: false
+globs: ["app/**/*"]
+---
+
+# Convenciones Rails
+
+## Gemas relevantes
+- omniauth-google-oauth2 y omniauth-apple para login con Google/Apple ID
+- image_processing (requerida para ActiveStorage con imágenes)
+- aws-sdk-s3 para almacenamiento en producción
+
+## Estructura
+- Service Objects en `app/services/` con un único método público `call`
+- Presenters en `app/presenters/` para formatear datos hacia vistas
+- ViewComponents en `app/components/`
+- Helpers solo para lógica de presentación simple
+- Mailers en `app/mailers/` para alertas y notificaciones
+
+## Autenticación
+- Usar `Authentication` concern nativo de Rails 8 (no Devise)
+- OmniAuth para Google y Apple ID (gemas arriba)
+- Sesiones seguras con `has_secure_password` para registro propio
+
+## Estilo Ruby
+- Preferir `#presence` sobre `present?`
+- Usar `#fetch` sobre `[]` en hashes cuando la clave se espera existir
+- Keyword arguments y pattern matching cuando aporten claridad
+
+## Patrones obligatorios
+- Turbo Frames para actualizaciones parciales de página
+- Turbo Streams para actualizaciones en tiempo real (alertas)
+- Stimulus controllers solo cuando Turbo no sea suficiente
+- Respuestas en formato Turbo Stream para formularios AJAX
+
+## Testing
+- RSpec para tests (mensajes de error más claros que Minitest)
+- FactoryBot para datos de prueba (no fixtures)
+- Shoulda Matchers para validaciones
+- VCR para tests que llaman APIs externas

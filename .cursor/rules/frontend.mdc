@@ -1,0 +1,44 @@
+---
+description: Convenciones de frontend para TaxDays
+alwaysApply: false
+globs: ["app/views/**/*"]
+---
+
+# Convenciones Frontend
+
+## Estilos
+- TailwindCSS 3 exclusivamente — no CSS custom salvo casos excepcionales
+- Diseño mobile-first
+- Dashboard con estética limpia y moderna (inspiración: Linear, Notion)
+
+## Componentes
+- Usar ViewComponent para cualquier elemento UI reutilizado más de una vez
+- Nomenclatura: `NombreComponent` (ej: `CountryBadgeComponent`, `TripRowComponent`)
+
+## Interactividad
+- Turbo Frame para cargar secciones sin recargar página (ej: selector de año en dashboard)
+- Stimulus para comportamiento JS local (ej: preview de imagen al subir billete)
+- NO usar fetch/axios manualmente si Turbo puede hacerlo
+
+## Dashboard principal
+- Tabla de días por país para el año seleccionado
+- Indicadores visuales: verde (cumple), amarillo (cerca del límite), rojo (excedido o en riesgo)
+- Selector de año natural en la parte superior
+
+## Dashboard — Gestión de huecos temporales
+
+- La tabla de días muestra el año completo como línea de tiempo
+- Entre trips existentes, si hay días sin cubrir aparece una fila
+  con estilo diferenciado (fondo gris/amarillo) que muestra:
+  "Del [fecha] al [fecha] — X días sin registrar"
+  + botón "Añadir período"
+- Al pulsar "Añadir período": Turbo Frame abre formulario inline con:
+  - País de origen y destino
+  - Fechas (pre-rellenadas con el hueco detectado, editables)
+  - Tipo de transporte (selector: tren, coche, barco, otro)
+  - Nota opcional ("viaje en coche sin billete")
+  - Campo opcional para subir documento alternativo (hotel, contrato...)
+- Los trips manuales se muestran con un icono distinto al de los
+  que tienen billete adjunto (ej: 📎 vs ✏️)
+- En el informe fiscal, los períodos manuales aparecen en color
+  diferente con nota "entrada manual — sin billete adjunto"

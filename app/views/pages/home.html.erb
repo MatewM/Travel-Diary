@@ -4,12 +4,12 @@
 
   <%# === GRID MOSAICO DE CIUDADES (fondo) === %>
   <div style="position: absolute; inset: 0; pointer-events: none; overflow: hidden;" data-controller="city-tiles" data-city-tiles-images-value="<%= city_images.to_json %>">
-    <%# Usamos Flexbox para dividir en 4 columnas independientes %>
-    <div style="display: flex; gap: 12px; padding: 12px; position: absolute; inset: -12px; height: calc(100% + 24px);">
+    <%# Usamos Flexbox para dividir en 4 columnas independientes - imágenes atenuadas con opacidad %>
+    <div class="city-grid-tiles" style="display: flex; gap: 12px; padding: 12px; position: absolute; inset: -12px; height: calc(100% + 24px); opacity: 0.52;">
       
       <%# --- COLUMNA 1: Animación hacia ARRIBA (6 tiles: 3 visibles + 3 duplicados) --- %>
       <div style="flex: 1; position: relative; overflow: hidden;">
-        <div style="display: flex; flex-direction: column; gap: 12px; animation: scrollUp 25s ease-in-out infinite alternate; height: 200%;">
+        <div style="display: flex; flex-direction: column; gap: 12px; animation: scrollUp 60s ease-in-out infinite alternate; height: 200%;">
           <%# Bloque original (3 tiles) %>
           <div data-city-tiles-target="tile" data-tile-id="c1-1" style="flex: 1; border-radius: 12px; overflow: hidden; transition: opacity 3s ease-in-out;">
             <img src="" alt="" loading="lazy" style="width: 100%; height: 100%; object-fit: cover; display: block;" />
@@ -45,7 +45,7 @@
 
       <%# --- COLUMNA 3: Animación hacia ABAJO (4 tiles: 2 visibles + 2 duplicados) --- %>
       <div style="flex: 1; position: relative; overflow: hidden;">
-        <div style="display: flex; flex-direction: column; gap: 12px; animation: scrollDown 45s ease-in-out infinite alternate; height: 200%;">
+        <div style="display: flex; flex-direction: column; gap: 12px; animation: scrollDown 90s ease-in-out infinite alternate; height: 200%;">
           <%# Bloque duplicado (arriba) - Mismos IDs que abajo %>
           <div data-city-tiles-target="tile" data-tile-id="c3-1" style="flex: 1; border-radius: 12px; overflow: hidden; transition: opacity 3s ease-in-out;">
             <img src="" alt="" loading="lazy" style="width: 100%; height: 100%; object-fit: cover; display: block;" />
@@ -102,7 +102,7 @@
 
     <%# Botones OAuth - Usan button_to para generar formularios POST reales (requerido por omniauth-rails_csrf_protection) %>
     <div style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px;">
-      <%= button_to user_google_oauth2_omniauth_authorize_path, data: { turbo: false },
+      <%= button_to "/users/auth/google_oauth2", data: { turbo: false },
           form: { style: "display: contents;" },
           style: "display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; padding: 10px 24px; border-radius: 9999px; font-weight: 600; cursor: pointer; background: #ffffff; border: 1px solid #e2e8f0; color: #1e293b; font-size: 0.9rem; font-family: system-ui, -apple-system, sans-serif; box-shadow: 0 1px 2px rgba(0,0,0,0.05); transition: background 0.2s;" do %>
         <svg style="width: 18px; height: 18px;" viewBox="0 0 24 24">
@@ -114,7 +114,7 @@
         Continuar con Google
       <% end %>
 
-      <%= button_to user_apple_omniauth_authorize_path, data: { turbo: false },
+      <%= button_to "/users/auth/apple", data: { turbo: false },
           form: { style: "display: contents;" },
           style: "display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; padding: 10px 24px; border-radius: 9999px; font-weight: 600; cursor: pointer; background: #000000; color: #ffffff; border: 1px solid #000000; font-size: 0.9rem; font-family: system-ui, -apple-system, sans-serif; transition: background 0.2s;" do %>
         <svg style="width: 18px; height: 18px;" viewBox="0 0 24 24" fill="white">
@@ -125,7 +125,7 @@
     </div>
 
     <%# Formulario email/contraseña %>
-    <%= form_with url: new_user_session_path, local: true, style: "display: flex; flex-direction: column;" do |f| %>
+    <%= form_with url: session_path, method: :post, local: true, style: "display: flex; flex-direction: column;" do |f| %>
       <div style="position: relative; margin-bottom: 8px;">
         <div style="position: absolute; top: 0; bottom: 0; left: 0; padding-left: 16px; display: flex; align-items: center; pointer-events: none; color: #94a3b8;">
           <svg xmlns="http://www.w3.org/2000/svg" style="width: 18px; height: 18px;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -151,10 +151,10 @@
 
       <div style="display: flex; align-items: center; justify-content: space-between; font-size: 0.8rem; padding: 2px 0;">
         <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; color: #475569; font-weight: 500;">
-          <%= f.check_box :remember_me, style: "width: 14px; height: 14px; border-radius: 4px; border: 1px solid #cbd5e1; color: #2563eb;" %>
+          <input type="checkbox" name="remember_me" style="width: 14px; height: 14px; border-radius: 4px; border: 1px solid #cbd5e1; color: #2563eb;">
           Recordarme
         </label>
-        <%= link_to "¿Olvidaste tu contraseña?", new_user_password_path, style: "color: #2563eb; text-decoration: none; font-weight: 600;" %>
+        <a href="#" style="color: #2563eb; text-decoration: none; font-weight: 600;">¿Olvidaste tu contraseña?</a>
       </div>
 
       <%= f.submit "Iniciar sesión",

@@ -1,6 +1,5 @@
-class Trip < ApplicationRecord
-  belongs_to :user
-  has_many_attached :tickets
+# frozen_string_literal: true
 
-  validates :destination, :start_date, :end_date, :country, presence: true
+# Placeholder: migración pendiente (ver schema.md para definición completa)
+class Trip < ApplicationRecord
 end

@@ -1,0 +1,18 @@
+---
+description: Convenciones de base de datos para TaxDays
+alwaysApply: false
+globs: ["db/**/*"]
+---
+# Convenciones de Base de Datos
+
+## PostgreSQL + Rails
+- Usar snake_case para nombres de tablas y columnas
+- Siempre incluir `timestamps` (created_at, updated_at) en todas las tablas
+- Las claves foráneas se nombran `tabla_id` (ej: `user_id`)
+- Usar UUIDs como primary key en tablas con datos de usuario (privacidad)
+- Índices obligatorios en todas las claves foráneas y campos de búsqueda frecuente
+
+## Reglas de negocio en datos
+- Un `trip` pertenece a un `user` y tiene país de origen y destino
+- Las fechas de viaje determinan días en cada país (lógica en Service Object, no en modelo)
+- Los `boarding_passes` se almacenan con ActiveStorage; guardar también los metadatos extraídos (fecha, origen, destino, número de vuelo)

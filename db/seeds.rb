@@ -1,9 +1,22 @@
-# This file should ensure the existence of records required to run the application in every environment (production,
-# development, test). The code here should be idempotent so that it can be executed at any point in every environment.
-# The data can then be loaded with the bin/rails db:seed command (or created alongside the database with db:setup).
-#
-# Example:
-#
-#   ["Action", "Comedy", "Drama", "Horror"].each do |genre_name|
-#     MovieGenre.find_or_create_by!(name: genre_name)
-#   end
+puts "Seeding countries..."
+
+countries_data = [
+  { name: "Spain",          code: "ES", continent: "Europe", min_days_required: 183, max_days_allowed: 183 },
+  { name: "France",         code: "FR", continent: "Europe", min_days_required: 183, max_days_allowed: 183 },
+  { name: "Italy",          code: "IT", continent: "Europe", min_days_required: 183, max_days_allowed: 183 },
+  { name: "Portugal",       code: "PT", continent: "Europe", min_days_required: 183, max_days_allowed: 183 },
+  { name: "Germany",        code: "DE", continent: "Europe", min_days_required: 183, max_days_allowed: 183 },
+  { name: "Netherlands",    code: "NL", continent: "Europe", min_days_required: nil,  max_days_allowed: 183 },
+  { name: "Belgium",        code: "BE", continent: "Europe", min_days_required: 183, max_days_allowed: 183 },
+  { name: "Switzerland",    code: "CH", continent: "Europe", min_days_required: 90,  max_days_allowed: 183 },
+  { name: "United Kingdom", code: "GB", continent: "Europe", min_days_required: 183, max_days_allowed: 183 },
+  { name: "Cyprus",         code: "CY", continent: "Europe", min_days_required: 60,  max_days_allowed: 183 },
+]
+
+countries_data.each do |attrs|
+  Country.find_or_create_by!(code: attrs[:code]) do |country|
+    country.assign_attributes(attrs.except(:code))
+  end
+end
+
+puts "  -> #{Country.count} countries created"
