@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class RegistrationsController < ApplicationController
-  allow_unauthenticated_access only: [:new, :create]
+  allow_unauthenticated_access only: %i[new create]
 
   def new
     @user = User.new

@@ -10,7 +10,7 @@ countries_data = [
   { name: "Belgium",        code: "BE", continent: "Europe", min_days_required: 183, max_days_allowed: 183 },
   { name: "Switzerland",    code: "CH", continent: "Europe", min_days_required: 90,  max_days_allowed: 183 },
   { name: "United Kingdom", code: "GB", continent: "Europe", min_days_required: 183, max_days_allowed: 183 },
-  { name: "Cyprus",         code: "CY", continent: "Europe", min_days_required: 60,  max_days_allowed: 183 },
+  { name: "Cyprus",         code: "CY", continent: "Europe", min_days_required: 60,  max_days_allowed: 183 }
 ]
 
 countries_data.each do |attrs|

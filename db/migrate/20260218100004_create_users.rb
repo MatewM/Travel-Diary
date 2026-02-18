@@ -11,6 +11,6 @@ class CreateUsers < ActiveRecord::Migration[8.1]
     end
 
     add_index :users, :email, unique: true
-    add_index :users, [:provider, :uid]
+    add_index :users, %i[provider uid]
   end
 end

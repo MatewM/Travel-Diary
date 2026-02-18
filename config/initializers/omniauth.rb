@@ -17,5 +17,5 @@ end
 
 # Misma ruta que usaba Devise para no cambiar la config de Google Console
 OmniAuth.config.path_prefix = "/users/auth"
-OmniAuth.config.allowed_request_methods = [:post]
+OmniAuth.config.allowed_request_methods = %i[post]
 OmniAuth.config.silence_get_warning = true

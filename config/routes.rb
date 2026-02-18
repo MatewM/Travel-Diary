@@ -1,6 +1,6 @@
 Rails.application.routes.draw do
-  resource :session, only: [:new, :create, :destroy]
-  resource :registration, only: [:new, :create]
+  resource :session, only: %i[new create destroy]
+  resource :registration, only: %i[new create]
 
   # OmniAuth callbacks (path_prefix /users/auth configurado en initializer)
   get "/users/auth/:provider/callback", to: "omniauth_callbacks#create"

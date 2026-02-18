@@ -18,7 +18,7 @@ gem "bootsnap", require: false
 gem "kamal", require: false
 gem "thruster", require: false
 gem "image_processing", "~> 1.2"
-gem "dotenv-rails", groups: [:development, :test]
+gem "dotenv-rails", groups: %i[development test]
 gem "view_component", "~> 3.10"
 gem "pdf-reader", "~> 2.12"
 
@@ -27,7 +27,7 @@ gem "omniauth-apple", "~> 1.3"
 gem "omniauth-rails_csrf_protection", "~> 1.0"
 
 group :development, :test do
-  gem "debug", platforms: %i[ mri windows ], require: "debug/prelude"
+  gem "debug", platforms: %i[mri windows], require: "debug/prelude"
   gem "bundler-audit", require: false
   gem "brakeman", require: false
   gem "rubocop-rails-omakase", require: false
