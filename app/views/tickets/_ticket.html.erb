@@ -1,11 +1,14 @@
+<% first_file = ticket.original_files.first %>
+<% is_pdf = first_file&.content_type == "application/pdf" %>
+
 <div id="<%= dom_id(ticket) %>"
      class="flex items-center gap-4 px-5 py-3 border-b border-slate-100 last:border-0
             hover:bg-slate-50 transition-colors">
 
-  <%# Icono según tipo de archivo %>
+  <%# Icono según tipo del primer archivo %>
   <div class="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0
-              <%= ticket.original_file.attached? && ticket.original_file.content_type == 'application/pdf' ? 'bg-red-100' : 'bg-indigo-100' %>">
-    <% if ticket.original_file.attached? && ticket.original_file.content_type == "application/pdf" %>
+              <%= is_pdf ? 'bg-red-100' : 'bg-indigo-100' %>">
+    <% if is_pdf %>
       <svg class="w-5 h-5 text-red-500" fill="currentColor" viewBox="0 0 24 24">
         <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z"/>
       </svg>
@@ -20,7 +23,7 @@
   <%# Info del ticket %>
   <div class="flex-1 min-w-0">
     <p class="text-sm font-medium text-slate-800 truncate">
-      <%= ticket.original_file.attached? ? ticket.original_file.filename : "Billete sin archivo" %>
+      <%= first_file ? first_file.filename.to_s : "Billete sin archivo" %>
     </p>
     <p class="text-xs text-slate-400 mt-0.5">
       Subido <%= time_ago_in_words(ticket.created_at) %> · Pendiente de procesar

@@ -8,13 +8,11 @@
          aria-hidden="true"></div>
 
     <%# Panel %>
-    <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg
-                transform transition-all"
-         data-upload-target="panel">
+    <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg transform transition-all">
 
       <%# Cabecera %>
       <div class="flex items-center justify-between px-6 pt-6 pb-4">
-        <h3 class="text-lg font-semibold text-slate-900">Subir Billete</h3>
+        <h3 class="text-lg font-semibold text-slate-900">Subir Billetes</h3>
         <button type="button"
                 data-action="click->upload#close"
                 class="text-slate-400 hover:text-slate-600 transition-colors rounded-lg p-1">
@@ -25,76 +23,57 @@
       </div>
 
       <%# Formulario %>
-      <%= form_with model: @ticket, url: tickets_path,
-                    data: { turbo_frame: "modal" },
-                    class: "px-6 pb-6" do |f| %>
+      <%= form_with model: @ticket, url: tickets_path, class: "px-6 pb-6" do |f| %>
 
-        <%# Errores %>
-        <% if @ticket.errors.any? %>
-          <div class="mb-4 rounded-lg bg-red-50 border border-red-200 px-4 py-3">
-            <ul class="text-sm text-red-700 space-y-0.5 list-disc list-inside">
-              <% @ticket.errors.full_messages.each do |msg| %>
-                <li><%= msg %></li>
-              <% end %>
-            </ul>
-          </div>
-        <% end %>
+        <%# Target de error — actualizado por Turbo Stream desde el controlador %>
+        <div id="upload_form_errors"></div>
 
         <%# Zona de drag & drop %>
         <div data-upload-target="dropZone"
-             data-action="dragover->upload#dragOver dragleave->upload#dragLeave drop->upload#dropFile"
+             data-action="dragover->upload#dragOver dragleave->upload#dragLeave drop->upload#dropFile click->upload#triggerFileInput"
              class="border-2 border-dashed border-slate-300 rounded-xl bg-slate-50
                     hover:border-indigo-400 hover:bg-indigo-50 transition-colors
-                    cursor-pointer p-6 text-center"
-             data-action="click->upload#triggerFileInput">
+                    cursor-pointer p-6 text-center select-none">
 
-          <%# Icono upload (siempre visible) %>
+          <%# Icono upload — visible cuando no hay archivos seleccionados %>
           <div data-upload-target="uploadIcon">
             <svg class="w-10 h-10 text-slate-400 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
                     d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
             </svg>
-            <p class="text-sm font-medium text-slate-700">
-              Arrastra tu billete aquí
-            </p>
+            <p class="text-sm font-medium text-slate-700">Arrastra tus billetes aquí</p>
             <p class="text-xs text-slate-400 mt-1">o haz clic para seleccionar</p>
-            <p class="text-xs text-slate-400 mt-1">PDF · JPG · PNG · máx. 10MB</p>
+            <p class="text-xs text-slate-400 mt-1">PDF · JPG · PNG · máx. 10 MB · múltiples archivos</p>
           </div>
 
-          <%# Preview imagen (oculto por defecto) %>
-          <div data-upload-target="previewArea" class="hidden">
-            <img data-upload-target="imagePreview"
-                 src="" alt="Preview del billete"
-                 class="hidden max-h-40 mx-auto rounded-lg object-contain mb-2"/>
-            <div data-upload-target="pdfIcon" class="hidden">
-              <svg class="w-12 h-12 text-red-500 mx-auto mb-2" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z"/>
-                <path d="M14 2v6h6M9 13h1a1 1 0 010 2H9v-2zm0 0v4m6-4h-2v4h2m-2-2h1.5"/>
-              </svg>
-            </div>
-            <p data-upload-target="filename"
-               class="text-sm font-medium text-slate-700 truncate max-w-xs mx-auto"></p>
-            <p class="text-xs text-indigo-600 mt-1">Haz clic para cambiar</p>
+          <%# Lista de archivos seleccionados — oculta por defecto %>
+          <div data-upload-target="previewArea" class="hidden text-left">
+            <p data-upload-target="counter"
+               class="text-sm font-semibold text-slate-800 mb-3"></p>
+            <div data-upload-target="fileList"
+                 class="space-y-1 max-h-44 overflow-y-auto pr-1"></div>
+            <p class="text-xs text-indigo-600 mt-3 text-center">Haz clic para cambiar los archivos</p>
           </div>
 
         </div>
 
-        <%# Input file oculto (manejado por Stimulus) %>
-        <%= f.file_field :original_file,
+        <%# Input file oculto — multiple: true, manejado por Stimulus %>
+        <%= f.file_field :original_files,
+              multiple: true,
               accept: "application/pdf,image/jpeg,image/png",
               class: "sr-only",
               data: { upload_target: "fileInput",
-                      action: "change->upload#previewFile" } %>
+                      action: "change->upload#previewFiles" } %>
 
         <%# Botones %>
-        <div class="flex justify-end gap-3 mt-6">
+        <div class="flex justify-end gap-3 mt-5">
           <button type="button"
                   data-action="click->upload#close"
                   class="border border-slate-200 text-slate-700 rounded-lg px-4 py-2
                          text-sm font-medium hover:bg-slate-50 transition-colors">
             Cancelar
           </button>
-          <%= f.submit "Subir Billete",
+          <%= f.submit "Subir",
                 class: "bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg px-4 py-2
                         text-sm font-medium transition-colors cursor-pointer" %>
         </div>

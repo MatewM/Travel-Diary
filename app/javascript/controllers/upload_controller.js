@@ -3,8 +3,14 @@ import { Controller } from "@hotwired/stimulus"
 export default class extends Controller {
   static targets = [
     "fileInput", "dropZone", "uploadIcon",
-    "previewArea", "imagePreview", "pdfIcon", "filename"
+    "previewArea", "fileList", "counter"
   ]
+
+  connect() {
+    this.files = []
+  }
+
+  // — Acciones de UI —
 
   close() {
     const frame = this.element.closest("turbo-frame")
@@ -12,7 +18,6 @@ export default class extends Controller {
   }
 
   triggerFileInput(event) {
-    // Avoid double-trigger when clicking the file input itself
     if (event.target === this.fileInputTarget) return
     this.fileInputTarget.click()
   }
@@ -32,46 +37,102 @@ export default class extends Controller {
     event.preventDefault()
     event.stopPropagation()
     this.dragLeave(event)
-
-    const files = event.dataTransfer?.files
-    if (files?.length > 0) {
-      this.#assignFilesToInput(files)
-      this.#showPreview(files[0])
-    }
+    const incoming = event.dataTransfer?.files
+    if (incoming?.length > 0) this.addFiles(incoming)
   }
 
-  previewFile(event) {
-    const file = event.target.files?.[0]
-    if (file) this.#showPreview(file)
+  previewFiles(event) {
+    const incoming = event.target.files
+    if (incoming?.length > 0) this.addFiles(incoming)
+    // Resetear el input para que el evento change dispare de nuevo
+    // si el usuario selecciona los mismos archivos otra vez.
+    event.target.value = ""
   }
 
-  // — Private helpers —
+  // Llamado desde el botón ✕ de cada fila — el índice viene del data-attribute.
+  removeFile(event) {
+    event.preventDefault()
+    event.stopPropagation()
+    const index = parseInt(event.currentTarget.dataset.index, 10)
+    this.files.splice(index, 1)
+    this.#syncInput()
+    this.#updatePreview()
+  }
 
-  #assignFilesToInput(fileList) {
+  // — API interna (usada por tests y lógica interna) —
+
+  addFiles(incoming) {
+    const existing = this.files.map(f => f.name + f.size)
+    const deduplicated = Array.from(incoming)
+      .filter(f => !existing.includes(f.name + f.size))
+    this.files = [...this.files, ...deduplicated]
+    this.#syncInput()
+    this.#updatePreview()
+  }
+
+  // — Privado —
+
+  #syncInput() {
     const dt = new DataTransfer()
-    dt.items.add(fileList[0])
+    this.files.forEach(f => dt.items.add(f))
     this.fileInputTarget.files = dt.files
   }
 
-  #showPreview(file) {
-    if (this.hasFilenameTarget) {
-      this.filenameTarget.textContent = file.name
+  #updatePreview() {
+    const n = this.files.length
+
+    if (n === 0) {
+      // Volver al estado inicial si se eliminaron todos los archivos
+      this.uploadIconTarget.classList.remove("hidden")
+      this.previewAreaTarget.classList.add("hidden")
+      return
     }
 
+    // Contador
+    this.counterTarget.textContent =
+      n === 1 ? "1 archivo seleccionado" : `${n} archivos seleccionados`
+
+    // Lista de archivos con botón ✕ por fila
+    this.fileListTarget.innerHTML = ""
+    this.files.forEach((file, index) => {
+      const isPdf = file.type === "application/pdf"
+      const icon = isPdf ? "📄" : "🖼️"
+
+      const row = document.createElement("div")
+      row.className = "flex items-center gap-2 py-1 group"
+      row.innerHTML =
+        `<span class="text-base leading-none flex-shrink-0">${icon}</span>` +
+        `<span class="text-sm text-slate-700 truncate flex-1">${this.#esc(file.name)}</span>` +
+        `<span class="text-xs text-slate-400 flex-shrink-0 mr-1">${this.#fmtSize(file.size)}</span>` +
+        `<button type="button"
+                 data-action="click->upload#removeFile"
+                 data-index="${index}"
+                 class="flex-shrink-0 w-5 h-5 rounded-full text-slate-400
+                        hover:text-red-500 hover:bg-red-50 transition-colors
+                        flex items-center justify-center leading-none
+                        opacity-0 group-hover:opacity-100 focus:opacity-100"
+                 aria-label="Eliminar ${this.#esc(file.name)}">✕</button>`
+      this.fileListTarget.appendChild(row)
+    })
+
+    // Mostrar área de preview, ocultar el icono inicial
     this.uploadIconTarget.classList.add("hidden")
     this.previewAreaTarget.classList.remove("hidden")
 
-    if (file.type === "application/pdf") {
-      this.imagePreviewTarget.classList.add("hidden")
-      this.pdfIconTarget.classList.remove("hidden")
-    } else {
-      this.pdfIconTarget.classList.add("hidden")
-      const reader = new FileReader()
-      reader.onload = (e) => {
-        this.imagePreviewTarget.src = e.target.result
-        this.imagePreviewTarget.classList.remove("hidden")
-      }
-      reader.readAsDataURL(file)
-    }
+    // Limpiar cualquier error previo
+    const errorDiv = document.getElementById("upload_form_errors")
+    if (errorDiv) errorDiv.innerHTML = ""
+  }
+
+  #esc(str) {
+    const d = document.createElement("div")
+    d.textContent = str
+    return d.innerHTML
+  }
+
+  #fmtSize(bytes) {
+    if (bytes < 1024) return `${bytes} B`
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
   }
 }

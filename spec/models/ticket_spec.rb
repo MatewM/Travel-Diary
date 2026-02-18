@@ -2,8 +2,20 @@ require "rails_helper"
 
 RSpec.describe Ticket, type: :model do
   describe "factory" do
-    it "crea un ticket válido" do
+    it "crea un ticket válido (status: manual, sin archivo)" do
       expect(build(:ticket)).to be_valid
+    end
+  end
+
+  describe "validación de archivos" do
+    it "falla sin archivo cuando status es pending_parse" do
+      ticket = build(:ticket, status: :pending_parse)
+      expect(ticket).not_to be_valid
+      expect(ticket.errors[:original_files]).to be_present
+    end
+
+    it "es válido sin archivo cuando status es manual" do
+      expect(build(:ticket, status: :manual)).to be_valid
     end
   end
 

@@ -1,7 +1,7 @@
 <%# Cerrar el modal vaciando el frame %>
 <%= turbo_stream.update "modal", "" %>
 
-<%# Mostrar sección de billetes si estaba oculta %>
+<%# Actualizar cabecera de la sección de billetes %>
 <%= turbo_stream.update "tickets_section_header" do %>
   <div class="px-6 py-4 bg-slate-50/50 border-b border-slate-200 flex items-center justify-between">
     <h2 class="text-xs font-bold text-slate-400 uppercase tracking-wider">Billetes Subidos</h2>
@@ -9,5 +9,7 @@
   </div>
 <% end %>
 
-<%# Añadir el nuevo ticket al inicio de la lista %>
-<%= turbo_stream.prepend "tickets_list", partial: "tickets/ticket", locals: { ticket: @ticket } %>
+<%# Añadir cada ticket creado al inicio de la lista %>
+<% @created_tickets.each do |ticket| %>
+  <%= turbo_stream.prepend "tickets_list", partial: "tickets/ticket", locals: { ticket: ticket } %>
+<% end %>
