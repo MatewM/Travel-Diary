@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_02_18_110512) do
+ActiveRecord::Schema[8.1].define(version: 2026_02_18_120002) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -74,6 +74,48 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_18_110512) do
     t.index ["user_id"], name: "index_sessions_on_user_id"
   end
 
+  create_table "tickets", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.string "airline"
+    t.string "arrival_airport"
+    t.bigint "arrival_country_id"
+    t.datetime "arrival_datetime"
+    t.datetime "created_at", null: false
+    t.string "departure_airport"
+    t.bigint "departure_country_id"
+    t.datetime "departure_datetime"
+    t.string "flight_number"
+    t.jsonb "parsed_data"
+    t.string "status", default: "pending_parse"
+    t.uuid "trip_id"
+    t.datetime "updated_at", null: false
+    t.uuid "user_id", null: false
+    t.index ["arrival_country_id"], name: "index_tickets_on_arrival_country_id"
+    t.index ["departure_country_id"], name: "index_tickets_on_departure_country_id"
+    t.index ["status"], name: "index_tickets_on_status"
+    t.index ["trip_id"], name: "index_tickets_on_trip_id"
+    t.index ["user_id"], name: "index_tickets_on_user_id"
+  end
+
+  create_table "trips", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.date "arrival_date", null: false
+    t.datetime "created_at", null: false
+    t.date "departure_date", null: false
+    t.bigint "destination_country_id", null: false
+    t.boolean "has_boarding_pass", default: false
+    t.boolean "manually_entered", default: false
+    t.text "notes"
+    t.bigint "origin_country_id"
+    t.string "title"
+    t.string "transport_type", default: "flight"
+    t.datetime "updated_at", null: false
+    t.uuid "user_id", null: false
+    t.index ["departure_date"], name: "index_trips_on_departure_date"
+    t.index ["destination_country_id"], name: "index_trips_on_destination_country_id"
+    t.index ["origin_country_id"], name: "index_trips_on_origin_country_id"
+    t.index ["user_id", "departure_date"], name: "index_trips_on_user_id_and_departure_date"
+    t.index ["user_id"], name: "index_trips_on_user_id"
+  end
+
   create_table "users", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.string "avatar_url"
     t.datetime "created_at", null: false
@@ -91,4 +133,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_18_110512) do
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
   add_foreign_key "airports", "countries"
   add_foreign_key "sessions", "users"
+  add_foreign_key "tickets", "countries", column: "arrival_country_id"
+  add_foreign_key "tickets", "countries", column: "departure_country_id"
+  add_foreign_key "tickets", "trips"
+  add_foreign_key "tickets", "users"
+  add_foreign_key "trips", "countries", column: "destination_country_id"
+  add_foreign_key "trips", "countries", column: "origin_country_id"
+  add_foreign_key "trips", "users"
 end

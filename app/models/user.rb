@@ -4,6 +4,8 @@ class User < ApplicationRecord
   has_secure_password validations: false
 
   has_many :sessions, dependent: :destroy
+  has_many :trips, dependent: :destroy
+  has_many :tickets, dependent: :destroy
 
   normalizes :email, with: ->(e) { e.strip.downcase }
 

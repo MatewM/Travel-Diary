@@ -26,6 +26,111 @@
   </head>
 
   <body class="min-h-screen bg-slate-50 antialiased">
+
+    <% if user_signed_in? %>
+      <nav class="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-200">
+        <div class="max-w-5xl mx-auto px-6 py-3 flex items-center justify-between">
+
+          <%# IZQUIERDA: Logo — imagen + texto exactamente como estaban %>
+          <div class="flex items-center gap-4">
+            <%= image_tag "logo-expats.png", alt: "Travel Diary",
+                class: "h-16 w-16 object-contain",
+                style: "mix-blend-mode: multiply;" %>
+            <span class="text-3xl font-bold text-gray-800 tracking-tight hidden sm:inline">Travel Diary</span>
+          </div>
+
+          <%# CENTRO-DERECHA: Selector de año + avatar %>
+          <div class="flex items-center gap-4">
+
+            <%# Selector de año %>
+            <div class="hidden sm:flex bg-slate-100 p-1 rounded-lg border border-slate-200">
+              <button class="px-3 py-1 text-xs font-medium text-slate-500 hover:text-slate-900">2024</button>
+              <button class="px-3 py-1 text-xs font-bold bg-white shadow-sm rounded border border-slate-200 text-indigo-600">2025</button>
+              <button class="px-3 py-1 text-xs font-medium text-slate-500 hover:text-slate-900">2026</button>
+            </div>
+
+          <%# Dropdown usuario %>
+          <div class="relative" id="nav-user-container">
+            <button type="button" id="nav-user-btn"
+                    class="flex items-center gap-3 cursor-pointer focus:outline-none py-1 select-none">
+
+              <div class="hidden sm:block leading-tight text-right">
+                <p class="text-base font-medium text-gray-900"><%= current_user.name || "Usuario" %></p>
+                <p class="text-sm text-gray-500"><%= current_user.email %></p>
+              </div>
+
+              <% if current_user.avatar_url.present? %>
+                <%= image_tag current_user.avatar_url,
+                    alt: current_user.name || "Avatar",
+                    class: "w-12 h-12 rounded-full object-cover ring-2 ring-slate-100",
+                    referrerpolicy: "no-referrer" %>
+              <% else %>
+                <div class="w-12 h-12 rounded-full bg-blue-600 flex items-center justify-center text-white text-lg font-semibold ring-2 ring-slate-100">
+                  <%= (current_user.name.presence || current_user.email).first.upcase %>
+                </div>
+              <% end %>
+
+              <svg id="nav-chevron"
+                   class="w-5 h-5 text-slate-400 transition-transform duration-200"
+                   fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+              </svg>
+            </button>
+
+            <%# Menú desplegable %>
+            <div id="nav-dropdown"
+                 style="display:none"
+                 class="absolute right-0 top-full mt-2 w-52 bg-white rounded-lg shadow-xl border border-slate-100 py-1 z-50">
+              <a href="#" id="nav-logout-link"
+                 class="flex items-center px-4 py-3 text-sm text-slate-600
+                        border-l-2 border-transparent
+                        hover:bg-red-50 hover:text-red-600 hover:border-red-400
+                        transition-colors duration-150">
+                <svg class="w-4 h-4 mr-3 text-slate-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+                </svg>
+                Cerrar sesión
+              </a>
+            </div>
+
+            <%# Form oculto para DELETE /session (ruta propia, no Devise) %>
+            <form id="nav-logout-form"
+                  action="<%= session_path %>"
+                  method="post"
+                  data-turbo="false"
+                  style="display:none">
+              <input type="hidden" name="_method" value="delete">
+              <input type="hidden" name="authenticity_token" value="<%= form_authenticity_token %>">
+            </form>
+          </div>
+
+          </div><%# /flex items-center gap-4 %>
+
+        </div>
+      </nav>
+
+      <script>
+        (function () {
+          var container = document.getElementById('nav-user-container');
+          var btn       = document.getElementById('nav-user-btn');
+          var menu      = document.getElementById('nav-dropdown');
+          var chevron   = document.getElementById('nav-chevron');
+          var logoutLink = document.getElementById('nav-logout-link');
+          var logoutForm = document.getElementById('nav-logout-form');
+
+          function open()  { menu.style.display = 'block';  chevron.style.transform = 'rotate(180deg)'; }
+          function close() { menu.style.display = 'none';   chevron.style.transform = 'rotate(0deg)'; }
+          function isOpen() { return menu.style.display === 'block'; }
+
+          btn.addEventListener('click', function (e) { e.stopPropagation(); isOpen() ? close() : open(); });
+          document.addEventListener('click', function (e) { if (isOpen() && !container.contains(e.target)) close(); });
+          document.addEventListener('keydown', function (e) { if (e.key === 'Escape') close(); });
+          logoutLink.addEventListener('click', function (e) { e.preventDefault(); logoutForm.submit(); });
+        })();
+      </script>
+    <% end %>
+
     <% if flash[:notice].present? %>
       <div class="fixed top-4 right-4 z-50 px-4 py-2 rounded-lg bg-sky-100 text-sky-800 text-sm shadow" role="alert">
         <%= flash[:notice] %>
