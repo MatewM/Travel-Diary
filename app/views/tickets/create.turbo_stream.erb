@@ -1,15 +1,34 @@
 <%# Cerrar el modal vaciando el frame %>
 <%= turbo_stream.update "modal", "" %>
 
-<%# Actualizar cabecera de la sección de billetes %>
-<%= turbo_stream.update "tickets_section_header" do %>
-  <div class="px-6 py-4 bg-slate-50/50 border-b border-slate-200 flex items-center justify-between">
-    <h2 class="text-xs font-bold text-slate-400 uppercase tracking-wider">Billetes Subidos</h2>
-    <span class="text-xs text-slate-400">Pendientes de procesar</span>
-  </div>
+<%# Mostrar banner "Analizar billetes" (ahora hay pendientes) %>
+<%= turbo_stream.replace "pending_analysis_banner" do %>
+  <%= render "dashboard/pending_analysis_banner", pending_count: current_user.tickets.pending_parse.count %>
 <% end %>
 
-<%# Añadir cada ticket creado al inicio de la lista %>
-<% @created_tickets.each do |ticket| %>
-  <%= turbo_stream.prepend "tickets_list", partial: "tickets/ticket", locals: { ticket: ticket } %>
+<%# Sección de billetes: primera subida (reemplazar oculto) o añadir a lista existente %>
+<% if current_user.tickets.count == @created_tickets.count %>
+  <%= turbo_stream.replace "tickets_empty_section" do %>
+    <div id="tickets_empty_section" class="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden mb-6">
+      <div id="tickets_section_header" class="px-6 py-4 bg-slate-50/50 border-b border-slate-200 flex items-center justify-between">
+        <h2 class="text-xs font-bold text-slate-400 uppercase tracking-wider">Billetes Subidos</h2>
+        <span class="text-xs text-slate-400">Pendientes de procesar</span>
+      </div>
+      <div id="tickets_list">
+        <% @created_tickets.each do |ticket| %>
+          <%= render "tickets/ticket", ticket: ticket %>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+<% else %>
+  <%= turbo_stream.update "tickets_section_header" do %>
+    <div class="px-6 py-4 bg-slate-50/50 border-b border-slate-200 flex items-center justify-between">
+      <h2 class="text-xs font-bold text-slate-400 uppercase tracking-wider">Billetes Subidos</h2>
+      <span class="text-xs text-slate-400">Pendientes de procesar</span>
+    </div>
+  <% end %>
+  <% @created_tickets.each do |ticket| %>
+    <%= turbo_stream.prepend "tickets_list", partial: "tickets/ticket", locals: { ticket: ticket } %>
+  <% end %>
 <% end %>

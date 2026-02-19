@@ -26,6 +26,8 @@ gem "omniauth-google-oauth2", "~> 1.1"
 gem "omniauth-apple", "~> 1.3"
 gem "omniauth-rails_csrf_protection", "~> 1.0"
 
+gem "sidekiq"
+
 group :development, :test do
   gem "debug", platforms: %i[mri windows], require: "debug/prelude"
   gem "bundler-audit", require: false
@@ -43,3 +45,5 @@ end
 group :development do
   gem "web-console"
 end
+
+

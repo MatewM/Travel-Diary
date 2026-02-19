@@ -2,6 +2,10 @@
     DASHBOARD — TaxDays
     El navbar vive en layouts/application.html.erb
     ============================================================ %>
+<%# Subscribe to per-user ticket updates broadcast from ParseTicketJob %>
+<%= turbo_stream_from "tickets_#{current_user.id}" %>
+<%# Invisible frame for process_tickets form response %>
+<%= turbo_frame_tag "process_tickets_frame", class: "hidden" %>
 
 <div class="min-h-screen bg-slate-50 relative overflow-hidden">
 
@@ -109,6 +113,9 @@
 
     </div>
     <!-- /PLACEHOLDER -->
+
+    <%# --- 2b. BANNER: billetes pendientes de análisis (siempre existe para Turbo Stream replace) --- %>
+    <%= render "dashboard/pending_analysis_banner" %>
 
     <%# --- 3. BILLETES SUBIDOS --- %>
     <% if @tickets.any? %>

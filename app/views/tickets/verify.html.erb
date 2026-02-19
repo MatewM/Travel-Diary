@@ -1,0 +1,170 @@
+<%= turbo_frame_tag "modal" do %>
+  <div data-controller="modal"
+       class="fixed inset-0 z-50 flex items-center justify-center p-4">
+
+    <%# Backdrop %>
+    <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+         data-action="click->modal#close"
+         aria-hidden="true"></div>
+
+    <%# Panel — two-column layout %>
+    <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh]
+                overflow-y-auto transform transition-all">
+
+      <%# Header %>
+      <div class="flex items-center justify-between px-6 pt-6 pb-4 border-b border-slate-100">
+        <div>
+          <h3 class="text-lg font-semibold text-slate-900">Verificar billete</h3>
+          <p class="text-xs text-slate-400 mt-0.5">
+            Corrige los datos extraídos por la IA y confirma para guardar.
+          </p>
+        </div>
+        <button type="button"
+                data-action="click->modal#close"
+                class="text-slate-400 hover:text-slate-600 transition-colors rounded-lg p-1">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+
+      <%# Body — two columns %>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-0">
+
+        <%# LEFT: ticket preview %>
+        <% first_file = @ticket.original_files.first %>
+        <div class="p-6 border-b md:border-b-0 md:border-r border-slate-100 flex flex-col items-center justify-center bg-slate-50 rounded-bl-2xl">
+          <% if first_file %>
+            <% if first_file.content_type.in?(%w[image/jpeg image/png]) %>
+              <%= image_tag rails_blob_path(first_file, disposition: "inline"),
+                    alt: first_file.filename.to_s,
+                    class: "max-h-72 rounded-lg shadow object-contain" %>
+            <% else %>
+              <%# PDF placeholder %>
+              <div class="w-24 h-28 bg-red-100 rounded-xl flex flex-col items-center justify-center shadow-sm">
+                <svg class="w-10 h-10 text-red-400 mb-2" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z"/>
+                </svg>
+                <span class="text-xs font-bold text-red-500 uppercase tracking-wide">PDF</span>
+              </div>
+              <p class="text-xs text-slate-500 mt-3 text-center break-all max-w-full px-2">
+                <%= first_file.filename %>
+              </p>
+            <% end %>
+          <% else %>
+            <p class="text-sm text-slate-400">Sin archivo adjunto</p>
+          <% end %>
+        </div>
+
+        <%# RIGHT: verification form %>
+        <div class="p-6">
+          <%= form_with model: @ticket,
+                url: ticket_path(@ticket),
+                method: :patch,
+                class: "space-y-4" do |f| %>
+
+            <%# Helper: highlight field if it has issues %>
+            <% def field_classes(field_name, issues)
+                 issues.include?(field_name.to_s) ?
+                   "border-amber-400 bg-amber-50 focus:ring-amber-300" :
+                   "border-emerald-300 bg-white focus:ring-emerald-200"
+               end %>
+            <% def field_icon(field_name, issues)
+                 issues.include?(field_name.to_s) ? "⚠️" : "✓"
+               end %>
+
+            <%# Flight number %>
+            <div>
+              <%= f.label :flight_number, "Número de vuelo", class: "block text-xs font-medium text-slate-600 mb-1" %>
+              <div class="flex items-center gap-2">
+                <%= f.text_field :flight_number,
+                      class: "flex-1 rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 transition #{field_classes(:flight_number, @issues)}",
+                      placeholder: "ej. IB3456" %>
+                <span class="text-base"><%= field_icon(:flight_number, @issues) %></span>
+              </div>
+            </div>
+
+            <%# Airline %>
+            <div>
+              <%= f.label :airline, "Aerolínea", class: "block text-xs font-medium text-slate-600 mb-1" %>
+              <div class="flex items-center gap-2">
+                <%= f.text_field :airline,
+                      class: "flex-1 rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 transition #{field_classes(:airline, @issues)}",
+                      placeholder: "ej. Iberia" %>
+                <span class="text-base"><%= field_icon(:airline, @issues) %></span>
+              </div>
+            </div>
+
+            <%# Airports %>
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <%= f.label :departure_airport, "Origen (IATA)", class: "block text-xs font-medium text-slate-600 mb-1" %>
+                <div class="flex items-center gap-1">
+                  <%= f.text_field :departure_airport,
+                        list: "airports_datalist",
+                        maxlength: 3,
+                        class: "flex-1 rounded-lg border px-3 py-2 text-sm uppercase focus:outline-none focus:ring-2 transition #{field_classes(:departure_airport, @issues)}",
+                        placeholder: "MAD" %>
+                  <span class="text-sm"><%= field_icon(:departure_airport, @issues) %></span>
+                </div>
+              </div>
+              <div>
+                <%= f.label :arrival_airport, "Destino (IATA)", class: "block text-xs font-medium text-slate-600 mb-1" %>
+                <div class="flex items-center gap-1">
+                  <%= f.text_field :arrival_airport,
+                        list: "airports_datalist",
+                        maxlength: 3,
+                        class: "flex-1 rounded-lg border px-3 py-2 text-sm uppercase focus:outline-none focus:ring-2 transition #{field_classes(:arrival_airport, @issues)}",
+                        placeholder: "LHR" %>
+                  <span class="text-sm"><%= field_icon(:arrival_airport, @issues) %></span>
+                </div>
+              </div>
+            </div>
+
+            <%# Datalist for airport IATA codes with name hints %>
+            <datalist id="airports_datalist">
+              <% @airports.each do |airport| %>
+                <option value="<%= airport.iata_code %>"><%= airport.iata_code %> – <%= airport.name %></option>
+              <% end %>
+            </datalist>
+
+            <%# Departure datetime %>
+            <div>
+              <%= f.label :departure_datetime, "Salida", class: "block text-xs font-medium text-slate-600 mb-1" %>
+              <div class="flex items-center gap-2">
+                <%= f.datetime_local_field :departure_datetime,
+                      class: "flex-1 rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 transition #{field_classes(:departure_datetime, @issues)}" %>
+                <span class="text-base"><%= field_icon(:departure_datetime, @issues) %></span>
+              </div>
+            </div>
+
+            <%# Arrival datetime %>
+            <div>
+              <%= f.label :arrival_datetime, "Llegada", class: "block text-xs font-medium text-slate-600 mb-1" %>
+              <div class="flex items-center gap-2">
+                <%= f.datetime_local_field :arrival_datetime,
+                      class: "flex-1 rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 transition #{field_classes(:arrival_datetime, @issues)}" %>
+                <span class="text-base"><%= field_icon(:arrival_datetime, @issues) %></span>
+              </div>
+            </div>
+
+            <%# Actions %>
+            <div class="flex justify-end gap-3 pt-2 border-t border-slate-100">
+              <button type="button"
+                      data-action="click->modal#close"
+                      class="border border-slate-200 text-slate-700 rounded-lg px-4 py-2
+                             text-sm font-medium hover:bg-slate-50 transition-colors">
+                Cancelar
+              </button>
+              <%= f.submit "Confirmar y guardar",
+                    class: "bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg px-4 py-2
+                            text-sm font-medium transition-colors cursor-pointer" %>
+            </div>
+
+          <% end %>
+        </div>
+
+      </div>
+    </div>
+  </div>
+<% end %>

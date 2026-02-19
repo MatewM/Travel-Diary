@@ -299,3 +299,29 @@ Generar PDF con:
 Gem recomendada: Prawn o WickedPDF
 generar_pdf(datos)
 
+---
+
+## 8. AssignTicketToTripService — Regla de escalas
+
+Criterio para determinar si una parada intermedia crea un Trip propio
+o se trata como escala (transit day) sin impacto fiscal:
+
+REGLA: Una parada en un país intermedio NO crea un Trip si:
+  1. El usuario permanece en zona airside (tránsito internacional), Y
+  2. El tiempo entre arrival_datetime del ticket entrante y
+     departure_datetime del ticket saliente es < 24 horas
+
+Si cualquiera de las dos condiciones se incumple → crear Trip intermedio.
+
+Base legal:
+- Modelo Convenio OCDE art. 15, Comentario 5: solo se computa presencia
+  efectiva acreditada documentalmente (paso por inmigración).
+- HMRC Statutory Residence Test (RFIG20730): el tránsito airside
+  no cuenta como día en el país.
+- Principio general: la presencia en zona internacional aeroportuaria
+  no equivale a presencia física en el territorio nacional.
+
+Limitación: el sistema no puede saber si el usuario salió del aeropuerto.
+El proxy es el tiempo (<24h). Si supera las 24h, se crea Trip y se avisa
+al usuario para que confirme si realmente salió del aeropuerto o no.
+

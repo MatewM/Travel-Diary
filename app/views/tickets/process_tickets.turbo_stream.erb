@@ -1,0 +1,12 @@
+<%# Ocultar banner: ya no hay pendientes (están en processing) %>
+<%= turbo_stream.replace "pending_analysis_banner" do %>
+  <%= render "dashboard/pending_analysis_banner", pending_count: 0 %>
+<% end %>
+<%# Reemplazar cada ticket card con spinner %>
+<% @processing_tickets.each do |ticket| %>
+  <%= turbo_stream.replace(ticket, partial: "tickets/ticket", locals: { ticket: ticket }) %>
+<% end %>
+<%# Vaciar el frame para cerrar la respuesta %>
+<%= turbo_stream.replace "process_tickets_frame" do %>
+  <%= turbo_frame_tag "process_tickets_frame", class: "hidden" %>
+<% end %>

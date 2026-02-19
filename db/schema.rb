@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_02_18_120002) do
+ActiveRecord::Schema[8.1].define(version: 2026_02_19_134439) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -19,10 +19,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_18_120002) do
     t.bigint "blob_id", null: false
     t.datetime "created_at", null: false
     t.string "name", null: false
-    t.bigint "record_id", null: false
+    t.uuid "record_id", null: false
     t.string "record_type", null: false
     t.index ["blob_id"], name: "index_active_storage_attachments_on_blob_id"
-    t.index ["record_type", "record_id", "name", "blob_id"], name: "index_active_storage_attachments_uniqueness", unique: true
+    t.index ["record_type", "name", "record_id", "blob_id"], name: "index_active_storage_attachments_uniqueness", unique: true
   end
 
   create_table "active_storage_blobs", force: :cascade do |t|
@@ -74,7 +74,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_18_120002) do
     t.index ["user_id"], name: "index_sessions_on_user_id"
   end
 
-  create_table "tickets", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+  create_table "tickets", id: :uuid, default: nil, force: :cascade do |t|
     t.string "airline"
     t.string "arrival_airport"
     t.bigint "arrival_country_id"
@@ -89,6 +89,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_18_120002) do
     t.uuid "trip_id"
     t.datetime "updated_at", null: false
     t.uuid "user_id", null: false
+    t.boolean "verified_by_user", default: false, null: false
     t.index ["arrival_country_id"], name: "index_tickets_on_arrival_country_id"
     t.index ["departure_country_id"], name: "index_tickets_on_departure_country_id"
     t.index ["status"], name: "index_tickets_on_status"

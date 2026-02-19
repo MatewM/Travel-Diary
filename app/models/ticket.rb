@@ -7,15 +7,20 @@ class Ticket < ApplicationRecord
   belongs_to :arrival_country, class_name: "Country", optional: true
 
   has_many_attached :original_files
+  before_create :assign_uuid
 
   ALLOWED_CONTENT_TYPES = %w[application/pdf image/jpeg image/png].freeze
   MAX_FILE_SIZE = 10.megabytes
 
   enum :status, {
-    pending_parse: "pending_parse",
-    parsed: "parsed",
-    manual: "manual",
-    error: "error"
+    pending_parse:    "pending_parse",
+    processing:       "processing",
+    auto_verified:    "auto_verified",
+    needs_review:     "needs_review",
+    manual_required:  "manual_required",
+    parsed:           "parsed",
+    manual:           "manual",
+    error:            "error"
   }
 
   validates :departure_airport, format: { with: /\A[A-Z]{3}\z/, message: "debe ser un código IATA de 3 letras mayúsculas" }, allow_blank: true
@@ -27,6 +32,14 @@ class Ticket < ApplicationRecord
   validate :arrival_after_departure
 
   private
+
+  # Añadir después de has_many_attached :original_files
+
+
+# Añadir al bloque private (al final del archivo)
+  def assign_uuid
+     self.id ||= SecureRandom.uuid
+  end
 
   def original_files_required
     errors.add(:original_files, :blank) unless original_files.attached?
