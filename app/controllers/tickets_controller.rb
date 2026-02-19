@@ -67,6 +67,7 @@ class TicketsController < ApplicationController
     end
   end
   
+  
 
   # GET /tickets/:id/verify
   def verify
