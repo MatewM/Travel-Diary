@@ -62,6 +62,7 @@ class Ticket < ApplicationRecord
   def arrival_after_departure
     return unless departure_datetime.present? && arrival_datetime.present?
 
-    errors.add(:arrival_datetime, :before_departure, message: "no puede ser anterior a la fecha/hora de salida") if arrival_datetime <= departure_datetime
+    # Solo penalizar si llega ANTES de salir (no si son iguales — cuando solo tenemos el día)
+    errors.add(:arrival_datetime, :before_departure, message: "no puede ser anterior a la fecha/hora de salida") if arrival_datetime < departure_datetime
   end
 end

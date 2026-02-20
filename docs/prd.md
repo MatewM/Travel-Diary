@@ -37,7 +37,7 @@ Expatriado digital o profesional internacional que:
 ## Valor principal
 
 1. **Mínima entrada de datos**: sube el billete, la app extrae
-   todo automáticamente via IA (Gemini 2.0 Flash)
+   todo automáticamente via IA (Gemini 2.5 Flash)
 2. **Dashboard claro**: sabe en todo momento cuántos días lleva
    en cada país y cuántos le faltan o le quedan
 3. **Informe listo para autoridades**: genera el documento

@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 class TicketsController < ApplicationController
+  include ActionView::RecordIdentifier
   before_action :set_ticket, only: %i[verify update destroy requeue]
 
   def new
@@ -33,7 +34,13 @@ class TicketsController < ApplicationController
 
     if created_tickets.any?
       respond_to do |format|
-        format.turbo_stream
+        format.turbo_stream do
+          render turbo_stream: [
+            turbo_stream.update("modal", ""),
+            turbo_stream.prepend("tickets_list", partial: "tickets/tickets", locals: { tickets: @created_tickets }),
+            turbo_stream.update("tickets_empty_section", "")
+          ]
+        end
         format.html { redirect_to dashboard_path, notice: "#{created_tickets.size} billetes subidos correctamente" }
       end
     else
@@ -55,6 +62,18 @@ class TicketsController < ApplicationController
   def process_tickets
     @processing_tickets = current_user.tickets.pending_parse.to_a
 
+    # Limpiar tickets atascados en processing (más de 10 minutos)
+    stuck_tickets = current_user.tickets.where(status: :processing)
+                               .where('updated_at < ?', 10.minutes.ago)
+
+    stuck_tickets.each do |ticket|
+      ticket.update_columns(
+        status: "error",
+        parsed_data: { error: "Ticket stuck in processing - reset automatically" },
+        updated_at: Time.current
+      )
+    end
+
     @processing_tickets.each do |ticket|
       ticket.update_column(:status, "processing")
       ParseTicketJob.perform_later(ticket.id)
@@ -69,9 +88,9 @@ class TicketsController < ApplicationController
   # GET /tickets/:id/verify
   def verify
     @airports = Airport.order(:iata_code)
-    @issues   = (@ticket.parsed_data.dig("confidence") || {})
-                .select { |_, v| v == "low" }
-                .keys
+    @issues   = (@ticket.parsed_data&.dig("confidence") || {})
+               .select { |_, v| v == "low" }
+               .keys
   end
 
   # PATCH /tickets/:id
@@ -80,18 +99,27 @@ class TicketsController < ApplicationController
       respond_to do |format|
         format.turbo_stream do
           render turbo_stream: [
-            turbo_stream.replace(@ticket, partial: "tickets/ticket", locals: { ticket: @ticket }),
-            turbo_stream.replace("modal", "")
+            turbo_stream.replace(ActionView::RecordIdentifier.dom_id(@ticket), partial: "tickets/ticket", locals: { ticket: @ticket }),
+            turbo_stream.update("modal", "")
           ]
         end
         format.html { redirect_to dashboard_path, notice: "Billete verificado correctamente." }
       end
     else
-      @airports = Airport.order(:iata_code)
-      @issues   = (@ticket.parsed_data.dig("confidence") || {})
-                  .select { |_, v| v == "low" }
-                  .keys
-      render :verify, status: :unprocessable_entity
+      airports = Airport.order(:iata_code)
+      issues   = (@ticket.parsed_data&.dig("confidence") || {})
+                 .select { |_, v| v == "low" }
+                 .keys
+      respond_to do |format|
+        format.turbo_stream do
+          render turbo_stream: turbo_stream.update(
+            "verify_form_errors",
+            partial: "tickets/upload_errors",
+            locals: { message: @ticket.errors.full_messages.to_sentence }
+          )
+        end
+        format.html { redirect_to dashboard_path, alert: @ticket.errors.full_messages.to_sentence }
+      end
     end
   end
 

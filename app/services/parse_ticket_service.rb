@@ -39,8 +39,8 @@ class ParseTicketService
       airline:              parsed_data["airline"],
       departure_airport:    parsed_data["departure_airport"],
       arrival_airport:      parsed_data["arrival_airport"],
-      departure_datetime:   parsed_data["departure_datetime"],
-      arrival_datetime:     parsed_data["arrival_datetime"],
+      departure_datetime:   parsed_data["flight_date"].present? ? Time.zone.parse(parsed_data["flight_date"]) : nil,
+      arrival_datetime:     nil, # Solo se rellena si el usuario lo confirma manualmente en la revisión
       departure_country_id: dep_country&.id,
       arrival_country_id:   arr_country&.id,
       status:               confidence_result[:status].to_s,
@@ -51,11 +51,20 @@ class ParseTicketService
 
     { success: true, ticket: ticket, confidence_level: confidence_result[:level] }
   rescue JSON::ParserError, StandardError => e
-    ticket&.update_columns(
-      status:     "error",
-      parsed_data: { error: e.message },
-      updated_at: Time.current
-    )
-    { success: false, error: e.message }
+    error_message = e.message
+
+    # Asegurar que siempre actualizamos el ticket, incluso si hay problemas
+    begin
+      ticket&.update_columns(
+        status:     "error",
+        parsed_data: { error: error_message, timestamp: Time.current.iso8601 },
+        updated_at: Time.current
+      )
+    rescue StandardError => update_error
+      # Si falla la actualización, al menos loguear el error
+      Rails.logger.error "Failed to update ticket #{ticket_id} status: #{update_error.message}"
+    end
+
+    { success: false, error: error_message }
   end
 end

@@ -5,7 +5,7 @@ class ConfidenceCalculatorService
   # tras el cambio del prompt de Gemini
   CRITICAL_FIELDS = %i[departure_airport arrival_airport flight_date].freeze
   REQUIRED_CONFIDENCE_FIELDS = %i[flight_number airline departure_airport
-                                  arrival_airport flight_date].freeze
+                                  arrival_airport flight_date passenger_name].freeze
 
   def self.call(parsed_data)
     new(parsed_data).call
@@ -53,23 +53,24 @@ class ConfidenceCalculatorService
     # Airline, flightnumber, hora exacta son detalles secundarios
     airports_ok = (issues & [:departure_airport, :arrival_airport]).empty?
 
-    has_valid_date = false
-    ['departure_datetime', 'arrival_datetime'].each do |date_field|
-      next unless @data[date_field].present?
+    # Signal 5 - validar flight_date
+    if @data["flight_date"].present?
       begin
-        Date.parse(@data[date_field]) # Solo valida DÍA
+        Date.parse(@data["flight_date"])
         has_valid_date = true
-        break
       rescue ArgumentError
+        issues << :flight_date
       end
+    else
+      issues << :flight_date # Penalizar si no hay fecha
     end
 
     if airports_ok && has_valid_date
-      { level: "high", status: "autoverified", issues: [] }
+      { level: "high", status: "auto_verified", issues: [] }
     elsif issues.count <= 2
-      { level: "medium", status: "needsreview", issues: issues }
+      { level: "medium", status: "needs_review", issues: issues }
     else
-      { level: "low", status: "manualrequired", issues: issues }
+      { level: "low", status: "manual_required", issues: issues }
     end
   end
 end
