@@ -33,8 +33,6 @@ class Ticket < ApplicationRecord
 
   private
 
-  # Añadir después de has_many_attached :original_files
-
 
 # Añadir al bloque private (al final del archivo)
   def assign_uuid

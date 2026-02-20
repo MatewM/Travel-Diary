@@ -1,0 +1,1 @@
+grep -A 20 "ParseTicketJob" log/development.log | tail -40

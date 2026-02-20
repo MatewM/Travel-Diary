@@ -18,6 +18,7 @@ Rails.application.routes.draw do
     end
     member do
       get :verify
+      patch :requeue
     end
   end
 end

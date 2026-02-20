@@ -1,61 +1,75 @@
 # frozen_string_literal: true
 
 class ConfidenceCalculatorService
-  CRITICAL_FIELDS = %i[departure_airport arrival_airport departure_datetime arrival_datetime].freeze
+  # flight_date reemplaza departure_datetime/arrival_datetime
+  # tras el cambio del prompt de Gemini
+  CRITICAL_FIELDS = %i[departure_airport arrival_airport flight_date].freeze
+  REQUIRED_CONFIDENCE_FIELDS = %i[flight_number airline departure_airport
+                                  arrival_airport flight_date].freeze
 
   def self.call(parsed_data)
     new(parsed_data).call
   end
 
   def initialize(parsed_data)
-    @data = parsed_data
+    @data = parsed_data.with_indifferent_access
   end
 
   def call
     issues = []
 
-    # Signal 1: null critical fields
+    # Signal 1 — campos críticos ausentes (nil o vacíos)
     CRITICAL_FIELDS.each do |field|
-      issues << field if @data[field.to_s].nil?
+      issues << field if @data[field].blank?
     end
 
-    # Signal 2: invalid IATA format
+    # Signal 2 — formato IATA inválido en aeropuertos
     %i[departure_airport arrival_airport].each do |field|
-      val = @data[field.to_s]
-      issues << field if val && val !~ /\A[A-Z]{3}\z/
+      val = @data[field].to_s
+      issues << field if val.present? && val !~ /\A[A-Z]{3}\z/
     end
 
-    # Signal 3: airport not found in DB
+    # Signal 3 — aeropuerto no encontrado en la DB
     %i[departure_airport arrival_airport].each do |field|
-      val = @data[field.to_s]
-      issues << field if val && !Airport.exists?(iata_code: val)
+      val = @data[field].to_s
+      issues << field if val.present? && !Airport.exists?(iata_code: val)
     end
 
-    # Signal 4: incoherent dates (arrival before departure)
-    dep = @data["departure_datetime"]
-    arr = @data["arrival_datetime"]
-    if dep && arr
-      begin
-        issues << :arrival_datetime if Time.parse(arr) < Time.parse(dep)
-      rescue ArgumentError
-        issues << :departure_datetime
-        issues << :arrival_datetime
-      end
+    # Signal 4 — confianza baja declarada por el propio Gemini
+    # Horas son opcionales — no penalizar si faltan
+    %i[departure_time arrival_time].each do |opt_field|
+      next unless @data[:confidence][opt_field]
+      issues << opt_field.to_sym if @data[:confidence][opt_field] == "low"
     end
 
-    # Signal 5: low confidence declared by Gemini itself
-    @data["confidence"]&.each do |field, level|
-      issues << field.to_sym if level == "low"
+    # Campos obligatorios sí penalizan
+    REQUIRED_CONFIDENCE_FIELDS.each do |field|
+      issues << field.to_sym if @data[:confidence][field] == "low"
     end
 
     issues.uniq!
 
-    if issues.empty?
-      { level: :high,   status: :auto_verified,  issues: [] }
+    # PRIORIDAD FISCAL: Para residencia fiscal solo importa PAÍS + DÍA
+    # Airline, flightnumber, hora exacta son detalles secundarios
+    airports_ok = (issues & [:departure_airport, :arrival_airport]).empty?
+
+    has_valid_date = false
+    ['departure_datetime', 'arrival_datetime'].each do |date_field|
+      next unless @data[date_field].present?
+      begin
+        Date.parse(@data[date_field]) # Solo valida DÍA
+        has_valid_date = true
+        break
+      rescue ArgumentError
+      end
+    end
+
+    if airports_ok && has_valid_date
+      { level: "high", status: "autoverified", issues: [] }
     elsif issues.count <= 2
-      { level: :medium, status: :needs_review,    issues: issues }
+      { level: "medium", status: "needsreview", issues: issues }
     else
-      { level: :low,    status: :manual_required, issues: issues }
+      { level: "low", status: "manualrequired", issues: issues }
     end
   end
 end

@@ -7,7 +7,7 @@
 <% end %>
 
 <%# Sección de billetes: primera subida (reemplazar oculto) o añadir a lista existente %>
-<% if current_user.tickets.count == @created_tickets.count %>
+<% if current_user.tickets.count == 0 %>
   <%= turbo_stream.replace "tickets_empty_section" do %>
     <div id="tickets_empty_section" class="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden mb-6">
       <div id="tickets_section_header" class="px-6 py-4 bg-slate-50/50 border-b border-slate-200 flex items-center justify-between">
