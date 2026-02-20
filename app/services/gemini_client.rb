@@ -4,35 +4,28 @@
 # Sends a document (PDF or image) encoded in base64 and returns the raw text
 # response from the model.
 
-module Gemini
-  BASE_URL = "https://generativelanguage.googleapis.com".freeze
-  MODEL = "gemini-2.0-flash".freeze
-  TIMEOUT = 30.seconds.freeze
-end
 class GeminiClient
   PROMPT = <<~PROMPT.freeze
-    You are an expert at extracting data from airline boarding passes and tickets.
-    Extract the following fields and return ONLY valid JSON, no extra text:
-    {
-      "flight_number": "string or null",
-      "airline": "string or null",
-      "departure_airport": "IATA 3-letter uppercase code or null",
-      "arrival_airport": "IATA 3-letter uppercase code or null",
-      "departure_datetime": "ISO 8601 format or null",
-      "arrival_datetime": "ISO 8601 format or null",
-      "passenger_name": "string or null",
-      "confidence": {
-        "flight_number": "high|medium|low",
-        "airline": "high|medium|low",
-        "departure_airport": "high|medium|low",
-        "arrival_airport": "high|medium|low",
-        "departure_datetime": "high|medium|low",
-        "arrival_datetime": "high|medium|low"
-      }
+  Extract data from this airline boarding pass or ticket.
+  Return ONLY valid JSON, no extra text:
+  {
+    "flight_number": "airline IATA code + number e.g. IB3456, or null",
+    "airline": "string or null",
+    "departure_airport": "IATA 3-letter uppercase code or null",
+    "arrival_airport": "IATA 3-letter uppercase code or null",
+    "flight_date": "date in YYYY-MM-DD format or null",
+    "arrival_time": "HH:MM in local time or null",
+    "passenger_name": "string or null",
+    "confidence": {
+      "flight_number": "high|medium|low",
+      "departure_airport": "high|medium|low",
+      "arrival_airport": "high|medium|low",
+      "flight_date": "high|medium|low"
     }
-    If a field is not clearly visible, return null and confidence "low".
-    Return ONLY the JSON object, nothing else.
-  PROMPT
+  }
+  Separate date and time fields - they are easier to read independently.
+  Return ONLY the JSON object, nothing else.
+PROMPT
 
   
   def self.parse_document(file_path, mime_type)
@@ -58,30 +51,60 @@ class GeminiClient
       ]
     }
 
-    # #region agent log H2/H4/H5
-    key = begin; api_key; rescue => e; "ERROR:#{e.message}"; end
-    _ep = "/models/#{Gemini::MODEL}:generateContent?key=REDACTED"
-    File.open("/home/phunna/.cursor/debug-4050d7.log", "a") do |f|
-      f.puts({ sessionId: "4050d7", hypothesisId: "H2/H4/H5", location: "gemini_client.rb:pre_request",
-               message: "About to call Gemini",
-               data: { model: Gemini::MODEL, base_url: Gemini::BASE_URL, full_endpoint: _ep,
-                       key_present: key != "ERROR:GEMINI_API_KEY not configured" && key.present?,
-                       key_prefix: key.to_s[0, 8] }, timestamp: Time.now.to_i }.to_json)
+    # #region agent log H1/H2/H3/H4/H5/H6
+    endpoint_path = "/v1beta/models/#{Gemini::MODEL}:generateContent"
+    File.open("/home/phunna/.cursor/debug-ad4598.log", "a") do |f|
+      f.puts({
+        sessionId: "ad4598",
+        runId: "run5", # Probando con modelo gemini-2.0-flash
+        hypothesisId: "endpoint_issue", # Problema con la construcción del endpoint
+        location: "gemini_client.rb:pre_request_debug",
+        message: "Full Gemini API call details",
+        data: {
+          model_constant: "gemini-2.5-flash",
+          base_url_constant: Gemini::BASE_URL,
+          api_key_present: Rails.application.credentials.dig(:gemini, :api_key).present?,
+          generated_endpoint: endpoint_path,
+          full_url: "#{Gemini::BASE_URL}#{endpoint_path}",
+          body_size: body.to_json.length,
+          api_key_in_header: true
+        },
+        timestamp: Time.now.to_i
+      }.to_json)
     end
     # #endregion
 
-    response = connection.post(endpoint, body.to_json, "Content-Type" => "application/json")
+    response = connection.post(endpoint_path, body.to_json, {
+      "Content-Type" => "application/json",
+      "x-goog-api-key" => api_key
+    })
 
-    # #region agent log H1/H3
-    File.open("/home/phunna/.cursor/debug-4050d7.log", "a") do |f|
-      f.puts({ sessionId: "4050d7", hypothesisId: "H1/H3", location: "gemini_client.rb:post_request",
-               message: "Gemini response received",
-               data: { status: response.status, body_length: response.body.to_s.length,
-                       body_preview: response.body.to_s[0, 500] }, timestamp: Time.now.to_i }.to_json)
+    # #region agent log - Response details
+    File.open("/home/phunna/.cursor/debug-ad4598.log", "a") do |f|
+      f.puts({
+        sessionId: "ad4598",
+        runId: "run5",
+        hypothesisId: "response_analysis",
+        location: "gemini_client.rb:post_response",
+        message: "Gemini API response details",
+        data: {
+          status_code: response.status,
+          response_body: response.body,
+          response_headers: response.headers.to_h,
+          full_url: "#{Gemini::BASE_URL}#{endpoint_path}"
+        },
+        timestamp: Time.now.to_i
+      }.to_json)
     end
     # #endregion
 
-    raise "Gemini API error #{response.status}: #{response.body}" unless response.success?
+    unless response.success?
+      if response.status == 503
+        raise "🚨 SERVIDOR GEMINI SATURADO - El servicio de Google Gemini está experimentando alta demanda durante hora punta. Este es un problema temporal del proveedor, no de tu aplicación. El sistema reintentará automáticamente en breve."
+      else
+        raise "Gemini API error #{response.status}: #{response.body}"
+      end
+    end
 
     candidates = JSON.parse(response.body).dig("candidates", 0, "content", "parts", 0, "text")
     raise "Gemini returned empty response" if candidates.blank?
@@ -93,16 +116,20 @@ class GeminiClient
   private
 
   def connection
-    @connection ||= Faraday.new(url: Gemini::BASE_URL) do |f|
-      f.options.timeout      = 30
-      f.options.open_timeout = 30
+    # Nueva conexión cada vez para evitar problemas con conexiones reutilizadas
+    Faraday.new(url: Gemini::BASE_URL) do |f|
+      f.options.timeout      = 45 # Sincronizado con config/initializers/gemini.rb
+      f.options.open_timeout = 10 # Reducido para conexiones TCP
+      f.options.read_timeout = 35 # Tiempo específico para leer respuesta
 
-           f.adapter Faraday.default_adapter
+      # Evitar conexiones TCP persistentes que se cierran por inactividad
+      f.adapter Faraday.default_adapter
+      f.headers['Connection'] = 'close'
     end
   end
 
   def endpoint
-    "/v1beta/models/#{Gemini::MODEL}:generateContent?key=#{api_key}"
+    "/v1beta/models/gemini-2.5-flash:generateContent"
   end
   
   def api_key
