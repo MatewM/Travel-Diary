@@ -17,8 +17,9 @@ class TicketsController < ApplicationController
         format.turbo_stream do
           render turbo_stream: turbo_stream.update(
             "upload_form_errors",
-            partial: "tickets/upload_errors",
-            locals: { message: "Debes seleccionar al menos un archivo." }
+            "<div class='p-3 mb-4 rounded-lg bg-red-50 text-red-700 text-sm'>
+              ⚠️ Debes seleccionar al menos un archivo.
+            </div>".html_safe
           ), status: :unprocessable_entity
         end
         format.html { render :new, status: :unprocessable_entity }
@@ -37,8 +38,8 @@ class TicketsController < ApplicationController
         format.turbo_stream do
           render turbo_stream: [
             turbo_stream.update("modal", ""),
-            turbo_stream.prepend("tickets_list", partial: "tickets/tickets", locals: { tickets: @created_tickets }),
-            turbo_stream.update("tickets_empty_section", "")
+            turbo_stream.prepend("tickets_list", partial: "tickets/ticket", collection: @created_tickets ),
+            turbo_stream.replace("pending_analysis_banner", partial: "dashboard/pending_analysis_banner", locals: { pending_count: current_user.tickets.pending_parse.count })
           ]
         end
         format.html { redirect_to dashboard_path, notice: "#{created_tickets.size} billetes subidos correctamente" }

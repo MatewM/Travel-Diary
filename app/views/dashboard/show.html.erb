@@ -67,10 +67,6 @@
           <span class="text-2xl">🇨🇾</span>
           <span class="text-base font-semibold text-slate-800">Chipre</span>
         </div>
-        <div class="flex items-center justify-between text-xs text-slate-400 mb-1.5">
-          <span>0 días acumulados</span>
-          <span>183 días objetivo</span>
-        </div>
         <div class="w-full bg-slate-100 rounded-full h-1.5">
           <div class="bg-emerald-500 h-1.5 rounded-full" style="width: 0%"></div>
         </div>
@@ -118,28 +114,27 @@
     <%= render "dashboard/pending_analysis_banner" %>
 
     <%# --- 3. BILLETES SUBIDOS --- %>
-    <% if @tickets.any? %>
-      <div class="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden mb-6">
+    <div class="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden mb-6"
+         data-controller="modal">
 
-        <div id="tickets_section_header"
-             class="px-6 py-4 bg-slate-50/50 border-b border-slate-200 flex items-center justify-between">
-          <h2 class="text-xs font-bold text-slate-400 uppercase tracking-wider">Billetes Subidos</h2>
-          <span class="text-xs text-slate-400">Pendientes de procesar</span>
-        </div>
+      <div id="tickets_section_header"
+           class="px-6 py-4 bg-slate-50/50 border-b border-slate-200 flex items-center justify-between">
+        <h2 class="text-xs font-bold text-slate-400 uppercase tracking-wider">Billetes Subidos</h2>
+        <span class="text-xs text-slate-400">Pendientes de procesar</span>
+      </div>
 
-        <div id="tickets_list">
+      <div id="tickets_list">
+        <% if @tickets.any? %>
           <%= render @tickets %>
-        </div>
+        <% else %>
+          <%# Mensaje cuando no hay tickets (inicialmente vacío o con un mensaje) %>
+          <div id="tickets_empty_section" class="py-4 px-6 text-center text-slate-400 text-sm">
+            No hay billetes subidos aún.
+          </div>
+        <% end %>
+      </div>
 
-      </div>
-    <% else %>
-      <%# Sección vacía — los Turbo Streams actualizan estos IDs aunque estén ocultos %>
-      <div class="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden mb-6 hidden"
-           id="tickets_empty_section">
-        <div id="tickets_section_header"></div>
-        <div id="tickets_list"></div>
-      </div>
-    <% end %>
+    </div>
 
     <%# --- 4. TABLA DE VIAJES --- %>
     <div class="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
