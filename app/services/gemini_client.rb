@@ -8,37 +8,52 @@ class GeminiClient
   PROMPT = <<~PROMPT.freeze
 Act as an expert aviation data extractor specialized in boarding passes and the IATA BCBP standard. Your task is to analyze the provided image and return ONLY a valid JSON object.
 
-CRITICAL EXTRACTION & DATE LOGIC RULES:
-1. QR DECODING: Locate the raw text string from the QR code. Extract the "Julian Day" (3-digit format) and use it as the technical baseline for the flight date.
-2. VISUAL CROSS-CHECK: Compare the Julian Day from the QR with the printed date (day/month) visible on the ticket. If they match, set confidence to "high".
-3. YEAR DEDUCTION (YEAR MISSING PROBLEM): 
-   - If the year is not explicitly printed, look for the day of the week (e.g., 'Friday 15 Jul','FRI 15 jul, etc...). Calculate the most likely recent year where that date/day combination exists.
-   - Use any provided metadata (e.g., image capture date) to infer the correct year.
-   - If the year remains uncertain after these steps, set 'can_search_flight' to true and set the year part of 'flight_date' or the entire field to null.
-4. SEARCH STATUS: 'can_search_flight' must be true if the year is uncertain or flight date is missing, or if data requires external validation.
+Hierarchy of Data Sources:
+
+Primary (Visual Text): Extract all visible data (Flight Number, Airports, Date, Passenger) from the printed text. This is your source of truth.
+
+Secondary (QR Code): Attempt to decode the QR string. Use the 3-digit "Julian Day" to validate the visual date. If the QR is blurry or unreadable, ignore it and rely 100% on the visual text.
+
+Conflicts: If visual text and QR data conflict, prioritize the visual text but lower the 'confidence' score for that field.
+
+Date & Year Logic:
+
+Year Deduction: If the year is not explicitly printed:
+
+Check the Day of the Week (e.g., 'Friday 15 Jul', 'FRI 15 jul', etc.). Calculate the most likely recent year where that specific day/month combination occurred.
+
+Use any provided metadata (e.g., image capture date provided in the user's message) to anchor the year.
+
+Search Status: Set 'can_search_flight' to true if:
+
+The year is uncertain or inferred.
+
+The 'arrival_time' is missing or blurry.
+
+The 'flight_date' year is null.
 
 REQUIRED JSON SCHEMA:
 {
-  "flight_number": "IATA Airline Code + Number (e.g., IB3456) or null",
-  "airline": "Airline name string or null",
-  "departure_airport": "3-letter IATA code or null",
-  "arrival_airport": "3-letter IATA code or null",
-  "flight_date": "YYYY-MM-DD or null",
-  "arrival_time": "HH:MM or null",
-  "passenger_name": "Full name string or null",
-  "can_search_flight": boolean,
-  "confidence": {
-    "flight_number": "high|medium|low",
-    "airline": "high|medium|low",
-    "departure_airport": "high|medium|low",
-    "arrival_airport": "high|medium|low",
-    "flight_date": "high|medium|low",
-    "arrival_time": "high|medium|low",
-    "passenger_name": "high|medium|low"
-  }
+"flight_number": "IATA Airline Code + Number (e.g., IB3456) or null",
+"airline": "Airline name string or null",
+"departure_airport": "3-letter IATA code or null",
+"arrival_airport": "3-letter IATA code or null",
+"flight_date": "YYYY-MM-DD or null",
+"arrival_time": "HH:MM or null",
+"passenger_name": "Full name string or null",
+"can_search_flight": boolean,
+"confidence": {
+"flight_number": "high|medium|low",
+"airline": "high|medium|low",
+"departure_airport": "high|medium|low",
+"arrival_airport": "high|medium|low",
+"flight_date": "high|medium|low",
+"arrival_time": "high|medium|low",
+"passenger_name": "high|medium|low"
+}
 }
 
-FINAL INSTRUCTION: Do not include Markdown tags (like ```json), explanatory text, or code blocks. Return only the raw, parseable JSON object.
+FINAL INSTRUCTION: Do not include Markdown tags (such as ```json), explanatory text, or code blocks. Return only the raw, parseable JSON object.
 PROMPT
 
   
