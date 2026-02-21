@@ -19,7 +19,6 @@
     <link rel="apple-touch-icon" href="/icon.png">
 
     <%# Tailwind CSS + estilos de aplicación %>
-    <script src="https://cdn.tailwindcss.com"></script>
     <%= stylesheet_link_tag "tailwind", "data-turbo-track": "reload" %>
     <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
     <%= javascript_importmap_tags %>
@@ -50,8 +49,9 @@
             </div>
 
           <%# Dropdown usuario %>
-          <div class="relative" id="nav-user-container">
+          <div class="relative" id="nav-user-container" data-controller="nav-dropdown">
             <button type="button" id="nav-user-btn"
+                    data-action="click->nav-dropdown#toggle"
                     class="flex items-center gap-3 cursor-pointer focus:outline-none py-1 select-none">
 
               <div class="hidden sm:block leading-tight text-right">
@@ -71,6 +71,7 @@
               <% end %>
 
               <svg id="nav-chevron"
+                   data-nav-dropdown-target="chevron"
                    class="w-5 h-5 text-slate-400 transition-transform duration-200"
                    fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
@@ -79,9 +80,12 @@
 
             <%# Menú desplegable %>
             <div id="nav-dropdown"
+                 data-nav-dropdown-target="menu"
                  style="display:none"
                  class="absolute right-0 top-full mt-2 w-52 bg-white rounded-lg shadow-xl border border-slate-100 py-1 z-50">
               <a href="#" id="nav-logout-link"
+                 data-nav-dropdown-target="logoutLink"
+                 data-action="click->nav-dropdown#logout"
                  class="flex items-center px-4 py-3 text-sm text-slate-600
                         border-l-2 border-transparent
                         hover:bg-red-50 hover:text-red-600 hover:border-red-400
@@ -96,6 +100,7 @@
 
             <%# Form oculto para DELETE /session (ruta propia, no Devise) %>
             <form id="nav-logout-form"
+                  data-nav-dropdown-target="logoutForm"
                   action="<%= session_path %>"
                   method="post"
                   data-turbo="false"
@@ -110,25 +115,6 @@
         </div>
       </nav>
 
-      <script>
-        (function () {
-          var container = document.getElementById('nav-user-container');
-          var btn       = document.getElementById('nav-user-btn');
-          var menu      = document.getElementById('nav-dropdown');
-          var chevron   = document.getElementById('nav-chevron');
-          var logoutLink = document.getElementById('nav-logout-link');
-          var logoutForm = document.getElementById('nav-logout-form');
-
-          function open()  { menu.style.display = 'block';  chevron.style.transform = 'rotate(180deg)'; }
-          function close() { menu.style.display = 'none';   chevron.style.transform = 'rotate(0deg)'; }
-          function isOpen() { return menu.style.display === 'block'; }
-
-          btn.addEventListener('click', function (e) { e.stopPropagation(); isOpen() ? close() : open(); });
-          document.addEventListener('click', function (e) { if (isOpen() && !container.contains(e.target)) close(); });
-          document.addEventListener('keydown', function (e) { if (e.key === 'Escape') close(); });
-          logoutLink.addEventListener('click', function (e) { e.preventDefault(); logoutForm.submit(); });
-        })();
-      </script>
     <% end %>
 
     <% if flash[:notice].present? %>

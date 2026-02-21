@@ -1,9 +1,8 @@
 ---
-description: Convenciones Rails para TaxDays
-alwaysApply: false
-globs: ["app/**/*"]
+description Rails conventions for TravelDiary
+alwaysApply true
+globs ["bin/*", "Rakefile"]
 ---
-
 # Convenciones Rails
 
 ## Gemas relevantes
@@ -17,6 +16,10 @@ globs: ["app/**/*"]
 - ViewComponents en `app/components/`
 - Helpers solo para lógica de presentación simple
 - Mailers en `app/mailers/` para alertas y notificaciones
+
+
+# Usa SIEMPRE bundle exec o bin/*
+
 
 ## Autenticación
 - Usar `Authentication` concern nativo de Rails 8 (no Devise)

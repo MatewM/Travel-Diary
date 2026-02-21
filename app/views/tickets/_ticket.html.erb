@@ -110,7 +110,7 @@
       </span>
       <%= link_to "Editar",
             verify_ticket_path(ticket),
-            data: { action: "click->modal#open", url: verify_ticket_path(ticket) },
+            data: { turbo_frame: "modal" },
             class: "text-xs text-slate-400 hover:text-slate-600 underline transition-colors" %>
 
     <% when "needs_review", "manual_required" %>
@@ -120,7 +120,7 @@
       </span>
       <%= link_to "Revisar ahora",
             verify_ticket_path(ticket),
-            data: { action: "click->modal#open", url: verify_ticket_path(ticket) },
+            data: { turbo_frame: "modal" },
             class: "text-xs font-medium text-amber-700 hover:text-amber-900 underline transition-colors" %>
 
     <% when "error" %>

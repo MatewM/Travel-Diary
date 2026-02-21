@@ -1,4 +1,4 @@
-<%= turbo_frame_tag "modal" do %>
+<%= turbo_frame_tag "modal", data: { controller: "modal" } do %>
     <div class="fixed inset-0 z-50 flex items-center justify-center p-4">
 
     <%# Backdrop %>
@@ -60,7 +60,15 @@
           <%= form_with model: @ticket,
                 url: ticket_path(@ticket),
                 method: :patch,
+                data: { turbo_frame: "_top" },
                 class: "space-y-4" do |f| %>
+
+            <%# Mostrar errores del modelo %>
+            <% if @ticket.errors.any? %>
+              <div class="p-3 mb-4 rounded-lg bg-red-50 text-red-700 text-sm">
+                ⚠️ <%= @ticket.errors.full_messages.to_sentence %>
+              </div>
+            <% end %>
 
             <%# Helper: highlight field if it has issues %>
             <% def field_classes(field_name, issues)
@@ -131,7 +139,7 @@
             <div>
               <%= f.label :departure_datetime, "Salida", class: "block text-xs font-medium text-slate-600 mb-1" %>
               <div class="flex items-center gap-2">
-                <%= f.datetime_local_field :departure_datetime,
+                <%= f.datetime_local_field :departure_datetime, required: false,
                       class: "flex-1 rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 transition #{field_classes(:departure_datetime, @issues)}" %>
                 <span class="text-base"><%= field_icon(:departure_datetime, @issues) %></span>
               </div>
@@ -141,7 +149,7 @@
             <div>
               <%= f.label :arrival_datetime, "Llegada", class: "block text-xs font-medium text-slate-600 mb-1" %>
               <div class="flex items-center gap-2">
-                <%= f.datetime_local_field :arrival_datetime,
+                <%= f.datetime_local_field :arrival_datetime, required: false,
                       class: "flex-1 rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 transition #{field_classes(:arrival_datetime, @issues)}" %>
                 <span class="text-base"><%= field_icon(:arrival_datetime, @issues) %></span>
               </div>
@@ -151,8 +159,7 @@
             <div class="flex justify-end gap-3 pt-2 border-t border-slate-100">
               <button type="button"
                       data-action="click->modal#close"
-                      class="border border-slate-200 text-slate-700 rounded-lg px-4 py-2
-                             text-sm font-medium hover:bg-slate-50 transition-colors">
+                      class="border border-slate-200 text-slate-700 rounded-lg px-4 py-2 text-sm font-medium hover:bg-slate-50 transition-colors">
                 Cancelar
               </button>
               <%= f.submit "Confirmar y guardar",

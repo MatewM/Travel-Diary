@@ -106,16 +106,16 @@ class TicketsController < ApplicationController
         format.html { redirect_to dashboard_path, notice: "Billete verificado correctamente." }
       end
     else
-      airports = Airport.order(:iata_code)
-      issues   = (@ticket.parsed_data&.dig("confidence") || {})
+      @airports = Airport.order(:iata_code)
+      @issues   = (@ticket.parsed_data&.dig("confidence") || {})
                  .select { |_, v| v == "low" }
                  .keys
       respond_to do |format|
         format.turbo_stream do
-          render turbo_stream: turbo_stream.update(
-            "verify_form_errors",
-            partial: "tickets/upload_errors",
-            locals: { message: @ticket.errors.full_messages.to_sentence }
+          # ✅ CORRECTO: re-renderizar el modal completo con los errores
+          render turbo_stream: turbo_stream.update("modal",
+            partial: "tickets/verify",
+            locals: { ticket: @ticket, airports: @airports, issues: @issues }
           )
         end
         format.html { redirect_to dashboard_path, alert: @ticket.errors.full_messages.to_sentence }
