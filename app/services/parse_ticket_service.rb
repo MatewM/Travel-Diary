@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class ParseTicketService
-  def self.call(ticket_id)
+  def self.call(ticket_id, capture_date = nil)
     new(ticket_id).call
   end
 
@@ -9,7 +9,7 @@ class ParseTicketService
     @ticket_id = ticket_id
   end
 
-  def call
+  def call(capture_date = nil)
     ticket = Ticket.find(@ticket_id)
 
     attachment = ticket.original_files.first
@@ -23,7 +23,7 @@ class ParseTicketService
     file_path  = ActiveStorage::Blob.service.path_for(attachment.blob.key)
     mime_type  = attachment.content_type
 
-    raw_response = GeminiClient.parse_document(file_path, mime_type)
+    raw_response = GeminiClient.parse_document(file_path, mime_type, capture_date)
     parsed_data  = JSON.parse(raw_response)
 
     confidence_result = ConfidenceCalculatorService.call(parsed_data)

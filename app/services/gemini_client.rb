@@ -6,43 +6,54 @@
 
 class GeminiClient
   PROMPT = <<~PROMPT.freeze
-  Extract data from this airline boarding pass or ticket.
-  Return ONLY valid JSON, no extra text:
-  {
-    "flight_number": "airline IATA code + number e.g. IB3456, or null",
-    "airline": "string or null",
-    "departure_airport": "IATA 3-letter uppercase code or null",
-    "arrival_airport": "IATA 3-letter uppercase code or null",
-    "flight_date": "date in YYYY-MM-DD format or null",
-    "arrival_time": "HH:MM in local time or null",
-    "passenger_name": "string or null",
-    "confidence": {
-      "flight_number": "high|medium|low",
-      "airline": "high|medium|low",
-      "departure_airport": "high|medium|low",
-      "arrival_airport": "high|medium|low",
-      "flight_date": "high|medium|low",
-      "arrival_time": "high|medium|low",
-      "passenger_name": "high|medium|low"
-    }
+Act as an expert aviation data extractor specialized in boarding passes and the IATA BCBP standard. Your task is to analyze the provided image and return ONLY a valid JSON object.
+
+CRITICAL EXTRACTION & DATE LOGIC RULES:
+1. QR DECODING: Locate the raw text string from the QR code. Extract the "Julian Day" (3-digit format) and use it as the technical baseline for the flight date.
+2. VISUAL CROSS-CHECK: Compare the Julian Day from the QR with the printed date (day/month) visible on the ticket. If they match, set confidence to "high".
+3. YEAR DEDUCTION (YEAR MISSING PROBLEM): 
+   - If the year is not explicitly printed, look for the day of the week (e.g., 'Friday 15 Jul','FRI 15 jul, etc...). Calculate the most likely recent year where that date/day combination exists.
+   - Use any provided metadata (e.g., image capture date) to infer the correct year.
+   - If the year remains uncertain after these steps, set 'can_search_flight' to true and set the year part of 'flight_date' or the entire field to null.
+4. SEARCH STATUS: 'can_search_flight' must be true if the year is uncertain or flight date is missing, or if data requires external validation.
+
+REQUIRED JSON SCHEMA:
+{
+  "flight_number": "IATA Airline Code + Number (e.g., IB3456) or null",
+  "airline": "Airline name string or null",
+  "departure_airport": "3-letter IATA code or null",
+  "arrival_airport": "3-letter IATA code or null",
+  "flight_date": "YYYY-MM-DD or null",
+  "arrival_time": "HH:MM or null",
+  "passenger_name": "Full name string or null",
+  "can_search_flight": boolean,
+  "confidence": {
+    "flight_number": "high|medium|low",
+    "airline": "high|medium|low",
+    "departure_airport": "high|medium|low",
+    "arrival_airport": "high|medium|low",
+    "flight_date": "high|medium|low",
+    "arrival_time": "high|medium|low",
+    "passenger_name": "high|medium|low"
   }
-  Separate date and time fields - they are easier to read independently.
-  Return ONLY the JSON object, nothing else.
+}
+
+FINAL INSTRUCTION: Do not include Markdown tags (like ```json), explanatory text, or code blocks. Return only the raw, parseable JSON object.
 PROMPT
 
   
-  def self.parse_document(file_path, mime_type)
+  def self.parse_document(file_path, mime_type, capture_date = nil)
     new.parse_document(file_path, mime_type)
   end
 
-  def parse_document(file_path, mime_type)
+  def parse_document(file_path, mime_type, capture_date = nil)
     encoded = Base64.strict_encode64(File.binread(file_path))
 
     body = {
       contents: [
         {
           parts: [
-            { text: PROMPT },
+            { text: build_prompt_with_metadata(capture_date) },
             {
               inline_data: {
                 mime_type: mime_type,
@@ -154,6 +165,17 @@ PROMPT
       candidates.gsub(/\A```(?:json)?\s*/i, "").gsub(/\s*```\z/, "").strip
     rescue JSON::ParserError => e
       raise "Failed to parse Gemini API response: #{e.message}. Response body: #{response.body[0..500]}..."
+    end
+  end
+
+  private
+
+  def build_prompt_with_metadata(capture_date)
+    dynamic_prompt = PROMPT.dup
+    if capture_date.present?
+      "Metadata: La fecha de captura de esta imagen es: #{capture_date}. Utiliza esta información para inferir el año de la fecha del vuelo si no es visible.\n\n" + dynamic_prompt
+    else
+      dynamic_prompt
     end
   end
 

@@ -1,3 +1,4 @@
+require 'mini_magick'
 # frozen_string_literal: true
 
 class ParseTicketJob < ApplicationJob
@@ -88,7 +89,24 @@ class ParseTicketJob < ApplicationJob
     #   sleep(1)
     # end
 
-    result = ParseTicketService.call(ticket_id)
+    # Obtener la ruta del archivo adjunto para extraer EXIF
+    file_path = nil
+    capture_date = nil
+    if ticket.original_files.attached?
+      begin
+        # Necesitamos la ruta física del archivo en el sistema de almacenamiento de ActiveStorage
+        # Esto puede variar dependiendo del adaptador de ActiveStorage (Disk, S3, etc.)
+        # Para el adaptador DiskStorage (común en desarrollo), esto podría ser:
+        file_path = ActiveStorage::Blob.service.send(:path_for, ticket.original_files.first.blob.key)
+        capture_date = get_exif_date(file_path)
+        Rails.logger.debug "[ParseTicketJob] Valor de capture_date obtenido: #{capture_date.inspect}"
+        Rails.logger.debug "[ParseTicketJob] EXIF capture date for #{ticket_id}: #{capture_date}"
+      rescue StandardError => e
+        Rails.logger.warn "[ParseTicketJob] Error extracting EXIF for ticket #{ticket_id}: #{e.message}"
+      end
+    end
+
+    result = ParseTicketService.call(ticket_id, capture_date) # Pasar la fecha de captura
 
     # #region agent log - Parse result
     File.open("/home/phunna/.cursor/debug-ad4598.log", "a") do |f|
@@ -102,6 +120,10 @@ class ParseTicketJob < ApplicationJob
           ticket_id: ticket_id,
           success: result[:success],
           error: result[:error],
+          # Añado aquí el parsed_data completo de Gemini
+          gemini_parsed_data: result[:ticket]&.parsed_data,
+          # Y aquí el resultado del ConfidenceCalculatorService
+          confidence_calculator_result: ConfidenceCalculatorService.call(result[:ticket]&.parsed_data),
           ticket_status: result[:ticket]&.status,
           confidence_level: result[:confidence_level]
         },
@@ -171,5 +193,22 @@ class ParseTicketJob < ApplicationJob
         }
       )
     end
+  end
+
+  private
+
+  def get_exif_date(file_path)
+    image = MiniMagick::Image.open(file_path)
+    date_time_original = image['exif:DateTimeOriginal'] || image['date:create']
+
+    if date_time_original
+      # Formato "YYYY:MM:DD HH:MM:SS" -> "YYYY-MM-DD"
+      date_time_original.split(' ')[0].gsub!(':', '-')
+    else
+      nil
+    end
+  rescue MiniMagick::Invalid => e
+    Rails.logger.warn "[ParseTicketJob] Invalid image for EXIF extraction: #{e.message}"
+    nil
   end
 end

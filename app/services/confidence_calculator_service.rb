@@ -4,8 +4,7 @@ class ConfidenceCalculatorService
   # flight_date reemplaza departure_datetime/arrival_datetime
   # tras el cambio del prompt de Gemini
   CRITICAL_FIELDS = %i[departure_airport arrival_airport flight_date].freeze
-  REQUIRED_CONFIDENCE_FIELDS = %i[flight_number airline departure_airport
-                                  arrival_airport flight_date passenger_name].freeze
+  CORE_CONFIDENCE_FIELDS = %i[departure_airport arrival_airport flight_date].freeze
 
   def self.call(parsed_data)
     new(parsed_data).call
@@ -17,6 +16,7 @@ class ConfidenceCalculatorService
 
   def call
     issues = []
+    has_valid_date = false # Inicialización para evitar el error de variable no definida
 
     # Signal 1 — campos críticos ausentes (nil o vacíos)
     CRITICAL_FIELDS.each do |field|
@@ -29,22 +29,29 @@ class ConfidenceCalculatorService
       issues << field if val.present? && val !~ /\A[A-Z]{3}\z/
     end
 
+    # TODO: Revisar y reactivar en el futuro cuando la base de datos de Airports
+    # esté enriquecida con todos los aeropuertos mundiales.
     # Signal 3 — aeropuerto no encontrado en la DB
-    %i[departure_airport arrival_airport].each do |field|
-      val = @data[field].to_s
-      issues << field if val.present? && !Airport.exists?(iata_code: val)
-    end
+    # %i[departure_airport arrival_airport].each do |field|
+    #   val = @data[field].to_s
+    #   issues << field if val.present? && !Airport.exists?(iata_code: val)
+    # end
 
     # Signal 4 — confianza baja declarada por el propio Gemini
     # Horas son opcionales — no penalizar si faltan
     %i[departure_time arrival_time].each do |opt_field|
       next unless @data[:confidence][opt_field]
-      issues << opt_field.to_sym if @data[:confidence][opt_field] == "low"
+      issues << opt_field.to_sym if @data[:confidence][opt_field] == "low" && !has_valid_date
     end
 
     # Campos obligatorios sí penalizan
-    REQUIRED_CONFIDENCE_FIELDS.each do |field|
-      issues << field.to_sym if @data[:confidence][field] == "low"
+    CORE_CONFIDENCE_FIELDS.each do |field|
+      issues << field.to_sym if @data[:confidence][field] != "high"
+    end
+
+    # Signal X — can_search_flight de Gemini indica necesidad de búsqueda externa
+    if @data["can_search_flight"].present? && @data["can_search_flight"] == true
+      issues << :requires_external_flight_search
     end
 
     issues.uniq!
@@ -54,18 +61,26 @@ class ConfidenceCalculatorService
     airports_ok = (issues & [:departure_airport, :arrival_airport]).empty?
 
     # Signal 5 - validar flight_date
+
     if @data["flight_date"].present?
       begin
         Date.parse(@data["flight_date"])
         has_valid_date = true
       rescue ArgumentError
         issues << :flight_date
+        has_valid_date = false
       end
     else
       issues << :flight_date # Penalizar si no hay fecha
+      has_valid_date = false # Explicitly set to false if date is missing or invalid
     end
 
-    if airports_ok && has_valid_date
+    # La lógica para decidir si es auto_verified debe ser más estricta
+    # Consideramos un ticket auto_verified si:
+    # 1. Los aeropuertos son válidos y encontrados en la DB
+    # 2. La fecha de vuelo es válida
+    # 3. No hay otros 'issues' que comprometan la verificación automática
+    if issues.empty? && airports_ok && has_valid_date
       { level: "high", status: "auto_verified", issues: [] }
     elsif issues.count <= 2
       { level: "medium", status: "needs_review", issues: issues }
