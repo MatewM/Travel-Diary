@@ -28,8 +28,13 @@ class ParseTicketService
 
     confidence_result = ConfidenceCalculatorService.call(parsed_data)
 
-    dep_country = Airport.find_by(iata_code: parsed_data["departure_airport"])&.country
-    arr_country = Airport.find_by(iata_code: parsed_data["arrival_airport"])&.country
+    # Persistir launch_modal en jsonb para que parse_ticket_job pueda leerlo
+    parsed_data["launch_modal"] = confidence_result&.dig(:launch_modal) || false
+
+    dep_country = Airport.find_by(iata_code: parsed_data["departure_airport"])&.country ||
+                  Country.find_by(code: parsed_data["departure_country"]&.upcase)
+    arr_country = Airport.find_by(iata_code: parsed_data["arrival_airport"])&.country ||
+                  Country.find_by(code: parsed_data["arrival_country"]&.upcase)
 
     # update_columns bypasses model validations intentionally: Gemini-parsed data
     # may contain incoherent dates or missing fields — those are handled by the
@@ -49,7 +54,8 @@ class ParseTicketService
     )
     ticket.reload
 
-    { success: true, ticket: ticket, confidence_level: confidence_result[:level] }
+    { success: true, ticket: ticket, confidence_level: confidence_result[:level],
+      launch_modal: confidence_result[:launch_modal] }
   rescue JSON::ParserError, StandardError => e
     error_message = e.message
 

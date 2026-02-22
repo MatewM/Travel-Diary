@@ -123,7 +123,9 @@ class ParseTicketJob < ApplicationJob
           # Añado aquí el parsed_data completo de Gemini
           gemini_parsed_data: result[:ticket]&.parsed_data,
           # Y aquí el resultado del ConfidenceCalculatorService
-          confidence_calculator_result: ConfidenceCalculatorService.call(result[:ticket]&.parsed_data),
+          confidence_calculator_result: ConfidenceCalculatorService.call(
+            result[:ticket]&.parsed_data || {}
+          ),
           ticket_status: result[:ticket]&.status,
           confidence_level: result[:confidence_level]
         },
@@ -175,12 +177,19 @@ class ParseTicketJob < ApplicationJob
       locals: { pending_count: pending_count }
     )
 
-    # 3. Si necesita revisión → abrir modal automáticamente
-    if ticket.needs_review? || ticket.manual_required?
-      issues = ticket.parsed_data
-                     &.dig("confidence")
-                     &.select { |_, v| v == "low" }
-                     &.keys || []
+    # 3. Abrir modal de revisión solo si launch_modal fue activado por ConfidenceCalculatorService
+    if (ticket.needs_review? || ticket.manual_required?) && (ticket.parsed_data || {})["launch_modal"] == true
+      # Resaltar todos los campos con confidence != "high" (medium y low), no solo low
+      raw_issues = (ticket.parsed_data || {}).dig("confidence")
+                     &.select { |_, v| v != "high" }
+                     &.keys
+                     &.map(&:to_sym) || []
+
+      # Normalizar: Gemini usa "flight_date" pero el formulario usa :departure_datetime
+      issues = raw_issues.map { |k| k == :flight_date ? :departure_datetime : k }
+      issues |= [:departure_datetime] if raw_issues.include?(:flight_date)
+
+      year_source = (ticket.parsed_data || {})["year_source"]
 
       Turbo::StreamsChannel.broadcast_replace_to(
         "tickets_#{ticket.user_id}",
@@ -189,7 +198,8 @@ class ParseTicketJob < ApplicationJob
         locals: {
           ticket: ticket,
           airports: Airport.order(:iata_code),
-          issues: issues.map(&:to_sym)
+          issues: issues.uniq,
+          year_source: year_source
         }
       )
     end

@@ -11,7 +11,7 @@ class ConfidenceCalculatorService
   end
 
   def initialize(parsed_data)
-    @data = parsed_data.with_indifferent_access
+    @data = (parsed_data || {}).with_indifferent_access
   end
 
   def call
@@ -40,18 +40,18 @@ class ConfidenceCalculatorService
     # Signal 4 — confianza baja declarada por el propio Gemini
     # Horas son opcionales — no penalizar si faltan
     %i[departure_time arrival_time].each do |opt_field|
-      next unless @data[:confidence][opt_field]
-      issues << opt_field.to_sym if @data[:confidence][opt_field] == "low" && !has_valid_date
+      next unless @data.dig(:confidence, opt_field.to_s)
+      issues << opt_field.to_sym if @data.dig(:confidence, opt_field.to_s) == "low" && !has_valid_date
     end
 
     # Campos obligatorios sí penalizan
     CORE_CONFIDENCE_FIELDS.each do |field|
-      issues << field.to_sym if @data[:confidence][field] != "high"
+      issues << field.to_sym if @data.dig(:confidence, field.to_s) != "high"
     end
 
-    # Signal X — can_search_flight de Gemini indica necesidad de búsqueda externa
-    if @data["can_search_flight"].present? && @data["can_search_flight"] == true
-      issues << :requires_external_flight_search
+    # Signal X: year_requires_verification — Gemini no pudo confirmar el año con certeza
+    if @data["year_requires_verification"] == true
+      issues << :year_requires_verification
     end
 
     issues.uniq!
@@ -75,17 +75,25 @@ class ConfidenceCalculatorService
       has_valid_date = false # Explicitly set to false if date is missing or invalid
     end
 
+    # Determinar si el modal de revisión debe abrirse automáticamente.
+    # NO lanzar modal si: aeropuertos ambos high Y flight_date high o medium (solo año incierto).
+    # SÍ lanzar modal si: cualquier aeropuerto no es high, o flight_date es low/nil.
+    airports_confidence_high = @data.dig("confidence", "departure_airport") == "high" &&
+                               @data.dig("confidence", "arrival_airport") == "high"
+    flight_date_conf = @data.dig("confidence", "flight_date")
+    launch_modal = !airports_confidence_high || !%w[high medium].include?(flight_date_conf.to_s)
+
     # La lógica para decidir si es auto_verified debe ser más estricta
     # Consideramos un ticket auto_verified si:
     # 1. Los aeropuertos son válidos y encontrados en la DB
     # 2. La fecha de vuelo es válida
     # 3. No hay otros 'issues' que comprometan la verificación automática
     if issues.empty? && airports_ok && has_valid_date
-      { level: "high", status: "auto_verified", issues: [] }
+      { level: "high", status: "auto_verified", issues: [], launch_modal: false }
     elsif issues.count <= 2
-      { level: "medium", status: "needs_review", issues: issues }
+      { level: "medium", status: "needs_review", issues: issues, launch_modal: launch_modal }
     else
-      { level: "low", status: "manual_required", issues: issues }
+      { level: "low", status: "manual_required", issues: issues, launch_modal: true }
     end
   end
 end

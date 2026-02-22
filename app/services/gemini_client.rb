@@ -6,57 +6,132 @@
 
 class GeminiClient
   PROMPT = <<~PROMPT.freeze
-Act as an expert aviation data extractor specialized in boarding passes and the IATA BCBP standard. Your task is to analyze the provided image and return ONLY a valid JSON object.
+You are a data extraction specialist for a fiscal travel diary application.
+Users upload airline boarding passes and QR code tickets to document their international
+travel for tax residency purposes. Extracted data may be reviewed by fiscal authorities.
+Precision over completeness: when in doubt, report low confidence rather than guessing.
 
-Hierarchy of Data Sources:
+--- HIERARCHY OF DATA SOURCES ---
 
-Primary (Visual Text): Extract all visible data (Flight Number, Airports, Date, Passenger) from the printed text. This is your source of truth.
+1. PRIMARY (Visual Text): Extract all visible data (flight number, airports, date, passenger)
+   from the printed text on the document. This is your source of truth.
 
-Secondary (QR Code): Attempt to decode the QR string. Use the 3-digit "Julian Day" to validate the visual date. If the QR is blurry or unreadable, ignore it and rely 100% on the visual text.
+2. SECONDARY (QR Code): Attempt to decode the QR string if present. Use the 3-digit
+   Julian Day embedded in QR codes (BCBP boarding pass standard) to cross-validate the
+   visual date (day + month only — Julian Day does NOT contain the year).
+   If the QR is blurry or unreadable, ignore it entirely and rely 100% on visual text.
 
-Conflicts: If visual text and QR data conflict, prioritize the visual text but lower the 'confidence' score for that field.
+3. CONFLICTS: If visual text and QR data conflict on any field, prioritize the visual text
+   but set confidence to "low" or "medium" for that field.
 
-Date & Year Logic:
+--- EXTRACTED FIELDS ---
 
-Year Deduction: If the year is not explicitly printed:
+Return ONLY valid JSON with no extra text:
 
-Check the Day of the Week (e.g., 'Friday 15 Jul', 'FRI 15 jul', etc.). Calculate the most likely recent year where that specific day/month combination occurred.
-
-Use any provided metadata (e.g., image capture date provided in the user's message) to anchor the year.
-
-Search Status: Set 'can_search_flight' to true if:
-
-The year is uncertain or inferred.
-
-The 'arrival_time' is missing or blurry.
-
-The 'flight_date' year is null.
-
-REQUIRED JSON SCHEMA:
 {
-"flight_number": "IATA Airline Code + Number (e.g., IB3456) or null",
-"airline": "Airline name string or null",
-"departure_airport": "3-letter IATA code or null",
-"arrival_airport": "3-letter IATA code or null",
-"flight_date": "YYYY-MM-DD or null",
-"arrival_time": "HH:MM or null",
-"passenger_name": "Full name string or null",
-"can_search_flight": boolean,
-"confidence": {
-"flight_number": "high|medium|low",
-"airline": "high|medium|low",
-"departure_airport": "high|medium|low",
-"arrival_airport": "high|medium|low",
-"flight_date": "high|medium|low",
-"arrival_time": "high|medium|low",
-"passenger_name": "high|medium|low"
-}
+  "flight_number": "string or null",
+  "airline": "string or null",
+  "departure_airport": "IATA 3-letter uppercase code or null",
+  "arrival_airport": "IATA 3-letter uppercase code or null",
+  "departure_country": "ISO 3166-1 alpha-2 code (2 uppercase letters) or null",
+  "arrival_country": "ISO 3166-1 alpha-2 code (2 uppercase letters) or null",
+  "flight_date": "YYYY-MM-DD format or null",
+  "departure_time": "HH:MM format or null",
+  "arrival_time": "HH:MM format or null",
+  "passenger_name": "string or null",
+  "year_requires_verification": true,
+  "year_source": "explicit | weekday_match | metadata_match | estimated | unknown",
+  "confidence": {
+    "flight_number": "high|medium|low",
+    "airline": "high|medium|low",
+    "departure_airport": "high|medium|low",
+    "arrival_airport": "high|medium|low",
+    "departure_country": "high|medium|low",
+    "arrival_country": "high|medium|low",
+    "flight_date": "high|medium|low",
+    "departure_time": "high|medium|low",
+    "arrival_time": "high|medium|low"
+  }
 }
 
-FINAL INSTRUCTION: Do not include Markdown tags (such as ```json), explanatory text, or code blocks. Return only the raw, parseable JSON object.
+If a field is not clearly visible, return null and confidence "low".
+Return ONLY the JSON object, nothing else.
+
+--- AIRPORT & COUNTRY VALIDATION ---
+
+CROSS-CHECK: For departure_airport and arrival_airport, verify that the 3-letter IATA code
+matches the city or airport name printed on the document.
+Examples: "Barcelona" → "BCN", "Madrid" → "MAD", "London Heathrow" → "LHR",
+"Larnaca" → "LCA", "Paris CDG" → "CDG", "Dubai" → "DXB".
+
+CORRECTION: If the IATA code is blurry or missing but the city/airport name is clearly
+visible, use your internal knowledge to provide the correct IATA code and set confidence
+to "medium" (inferred, not directly read).
+
+MISMATCH: If the printed IATA code and the visible city/airport name do NOT match
+according to official IATA standards, set confidence for that airport field to "low".
+
+COUNTRIES: Derive departure_country and arrival_country as ISO 3166-1 alpha-2 codes
+directly from the confirmed IATA airport code using your internal knowledge.
+Examples: BCN/MAD → "ES", LHR/LGW → "GB", LCA → "CY", CDG/ORY → "FR",
+DXB/AUH → "AE", FCO/MXP → "IT".
+- If airport confidence is "high" → country confidence is "high".
+- If airport confidence is "medium" → country confidence is "medium".
+- If airport confidence is "low" or airport is null → set country to null and confidence "low".
+
+--- STRICT CONFIDENCE RULES FOR flight_date (MAXIMUM PRIORITY — PREVENT HALLUCINATIONS) ---
+
+CRITICAL: Boarding passes and QR codes very frequently omit the 4-digit year.
+Day and month being clearly visible does NOT by itself justify confidence "high" or "medium".
+The year must be independently confirmed. Apply these rules in strict priority order:
+
+RULE 1 — EXPLICIT YEAR → confidence: "high"
+  The complete date including the 4-digit year (e.g., 2025-03-15) is unambiguously
+  printed or encoded in the document. No inference needed.
+  → Set year_source: "explicit", year_requires_verification: false.
+
+RULE 2 — METADATA CONFIRMATION → confidence: "high"
+  ⚠ PREREQUISITE: This rule ONLY applies when a "--- FILE METADATA ---" block
+  is explicitly present at the END of this prompt. If no such block exists,
+  skip this rule entirely and proceed directly to Rule 3.
+  When the block IS present: verify that the capture date is 0 to 3 days BEFORE
+  the flight day+month you extracted. This is logically consistent with a user
+  photographing their ticket just before departure.
+  If the metadata date is AFTER the flight date, or the gap exceeds 7 days,
+  this rule does NOT apply — treat metadata as unreliable.
+  → Set year_source: "metadata_match", year_requires_verification: false.
+
+RULE 3 — WEEKDAY + CALENDAR/ROUTE MATCH → confidence: "high"
+  The year is not explicitly printed, but a weekday name IS visible on the document
+  (e.g., FRI, FRIDAY, MON, MONDAY, LUNES, VIE, JUE, etc.) AND using calendar arithmetic
+  and your knowledge of flight routes/schedules you can uniquely identify one specific year
+  where that exact weekday falls on that day+month for this route.
+  The match must be unambiguous — if two or more recent years are equally plausible,
+  downgrade to "medium".
+  → Set year_source: "weekday_match", year_requires_verification: false.
+
+RULE 4 — YEAR ESTIMATED FROM CONTEXT → confidence: "medium"
+  No explicit year, no weekday, no usable metadata. You estimate using available context:
+  - This app documents past travel for fiscal records.
+    The most probable year is the calendar year immediately preceding today (last year).
+  - Use last year if consistent with available clues (route, airline, season).
+  - If clues suggest ambiguity or point to a different year, downgrade to "low".
+  → Set year_source: "estimated", year_requires_verification: true.
+
+RULE 5 — NO YEAR EVIDENCE AT ALL → confidence: "low" (MANDATORY)
+  No year visible, no weekday name, no usable metadata, no reliable inference possible.
+  You MUST set confidence "low" for flight_date. You may still return a best-guess date
+  (default to last year), but it must be marked low.
+  → Set year_source: "unknown", year_requires_verification: true.
+
+RULE 6 — METADATA CONTRADICTION OR AMBIGUITY → confidence: "low" or "medium"
+  The provided metadata contradicts the visual date or creates logical ambiguity.
+  Do not use metadata to boost confidence. Fall back to Rules 3–5.
+  → Apply discretion based on severity of contradiction.
+
+NEVER set flight_date confidence to "high" based solely on a visible day and month.
 PROMPT
 
-  
   def self.parse_document(file_path, mime_type, capture_date = nil)
     new.parse_document(file_path, mime_type)
   end
@@ -188,10 +263,14 @@ PROMPT
   def build_prompt_with_metadata(capture_date)
     dynamic_prompt = PROMPT.dup
     if capture_date.present?
-      "Metadata: La fecha de captura de esta imagen es: #{capture_date}. Utiliza esta información para inferir el año de la fecha del vuelo si no es visible.\n\n" + dynamic_prompt
-    else
-      dynamic_prompt
+      dynamic_prompt += "\n\n--- FILE METADATA (applies to RULE 2 above) ---\n" \
+        "File capture/creation date: #{capture_date}\n" \
+        "Use this date to apply RULE 2: if the flight day+month falls 0 to 3 days " \
+        "AFTER this capture date, Rule 2 is satisfied and confidence 'high' is permitted.\n" \
+        "If the gap is larger than 7 days or inverted (flight before capture date), " \
+        "ignore this metadata entirely and fall back to Rules 3-5."
     end
+    dynamic_prompt
   end
 
   private

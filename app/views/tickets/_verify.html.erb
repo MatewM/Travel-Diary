@@ -32,12 +32,12 @@
 
         <%# LEFT: ticket preview %>
         <% first_file = ticket.original_files.first %>
-        <div class="p-6 border-b md:border-b-0 md:border-r border-slate-100 flex flex-col items-center justify-center bg-slate-50 rounded-bl-2xl">
+        <div class="p-4 border-b md:border-b-0 md:border-r border-slate-100 flex flex-col items-center justify-center bg-slate-50 rounded-bl-2xl min-h-96">
           <% if first_file %>
             <% if first_file.content_type.in?(%w[image/jpeg image/png]) %>
               <%= image_tag rails_blob_path(first_file, disposition: "inline"),
                     alt: first_file.filename.to_s,
-                    class: "max-h-72 rounded-lg shadow object-contain" %>
+                    class: "max-h-[32rem] w-full rounded-lg shadow object-contain" %>
             <% else %>
               <%# PDF placeholder %>
               <div class="w-24 h-28 bg-red-100 rounded-xl flex flex-col items-center justify-center shadow-sm">
