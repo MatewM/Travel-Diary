@@ -7,27 +7,24 @@
 <%# Invisible frame for process_tickets form response %>
 <%= turbo_frame_tag "process_tickets_frame", class: "hidden" %>
 
-<div class="min-h-screen bg-slate-50 relative overflow-hidden">
+<div class="min-h-screen relative overflow-hidden">
 
-  <%# === FONDO: logo con opacidad baja, no compite con el contenido === %>
-  <div class="absolute top-0 left-0 z-0 pointer-events-none opacity-10">
-    <%= image_tag "logo-expats.png", class: "w-[70vw] max-w-[900px] translate-x-0 translate-y-8" %>
+  <%# === FONDO: imagen completa centrada === %>
+  <div class="absolute inset-0 z-0 pointer-events-none flex justify-center items-start">
+    <%= image_tag "Backdash.png", class: "w-full max-w-4xl object-contain" %>
   </div>
 
   <%# === CONTENIDO PRINCIPAL === %>
-  <div class="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 py-8">
+  <div class="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 py-8 mt-12">
 
     <%# --- 1. HEADER DE PÁGINA: Saludo + Botones --- %>
     <header class="flex flex-col sm:flex-row sm:items-end justify-between mb-8 gap-4">
 
       <%# IZQUIERDA: título y subtítulo %>
-      <div>
+      <div class="-mt-8">
         <h1 class="text-2xl font-bold text-slate-900">
           Hola, <%= current_user.name&.split(' ')&.first || current_user.email.split("@").first %> 👋
         </h1>
-        <p class="mt-1 text-slate-500 text-sm">
-          Gestiona tus viajes y controla tus días de residencia fiscal.
-        </p>
       </div>
 
       <%# DERECHA: botón PDF + botón Subir %>
@@ -58,7 +55,7 @@
     <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
 
       <%# Card 1 — Residencia Principal (verde) %>
-      <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
+      <div class="rounded-xl border border-slate-200 shadow-md p-5" style="backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); background-color: rgba(255, 255, 255, 0.3);">
         <div class="flex items-center justify-between mb-3">
           <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Residencia Principal</span>
           <span class="text-xs font-semibold bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">En Curso</span>
@@ -73,7 +70,7 @@
       </div>
 
       <%# Card 2 — Riesgo Fiscal (ámbar) %>
-      <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
+      <div class="rounded-xl border border-slate-200 shadow-md p-5" style="backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); background-color: rgba(255, 255, 255, 0.3);">
         <div class="flex items-center justify-between mb-3">
           <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Riesgo Fiscal</span>
           <span class="text-xs font-semibold bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">Cuidado</span>
@@ -98,7 +95,7 @@
       </div>
 
       <%# Card 3 — Países Visitados (indigo) %>
-      <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
+      <div class="rounded-xl border border-slate-200 shadow-md p-5" style="backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); background-color: rgba(255, 255, 255, 0.3);">
         <div class="flex items-center justify-between mb-3">
           <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Países Visitados</span>
           <span class="text-2xl font-bold text-indigo-600">0</span>
