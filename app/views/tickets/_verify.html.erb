@@ -27,6 +27,45 @@
         </button>
       </div>
 
+
+      <%# --- INICIO BLOQUE DE ADVERTENCIAS --- %>
+      <% 
+        # Aseguramos que los issues sean símbolos para compararlos fácilmente
+        _issues = local_assigns.fetch(:issues, []).map(&:to_sym) 
+        _year_source = local_assigns.fetch(:year_source, nil)
+      %>
+
+      <% if _issues.any? %>
+        <div class="mx-6 mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+          <p class="text-xs font-bold text-red-800 flex items-center gap-1.5 mb-1.5">
+            ⚠️ La IA tiene dudas con algunos datos. Por favor, verifica:
+          </p>
+          <ul class="text-xs text-red-700 list-disc list-inside pl-1 space-y-1">
+            
+            <%# Lógica para aeropuertos %>
+            <% if _issues.include?(:departure_airport) || _issues.include?(:arrival_airport) %>
+              <li>Uno o ambos <b>aeropuertos</b> no se detectaron con certeza o son inválidos.</li>
+            <% end %>
+
+            <%# Lógica inteligente para la fecha y el año %>
+            <% if _issues.include?(:departure_datetime) || _issues.include?(:year_requires_verification) %>
+              <% case _year_source %>
+              <% when "estimated" %>
+                <li>El <b>año del vuelo</b> fue estimado por contexto. Comprueba que sea correcto.</li>
+              <% when "unknown" %>
+                <li>No fue posible deducir el <b>año</b> del billete. Por favor, introdúcelo manualmente.</li>
+              <% when "weekday_match" %>
+                <li>El <b>año</b> fue deducido usando el día de la semana. Confírmalo, por favor.</li>
+              <% else %>
+                <li>La <b>fecha y hora</b> están incompletas o la IA no está segura de haberlas leído bien.</li>
+              <% end %>
+            <% end %>
+
+          </ul>
+        </div>
+      <% end %>
+      <%# --- FIN BLOQUE DE ADVERTENCIAS --- %>
+
       <%# Body — two columns %>
       <div class="grid grid-cols-1 md:grid-cols-2 gap-0">
 
