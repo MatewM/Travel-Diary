@@ -133,7 +133,7 @@ NEVER set flight_date confidence to "high" based solely on a visible day and mon
 PROMPT
 
   def self.parse_document(file_path, mime_type, capture_date = nil)
-    new.parse_document(file_path, mime_type)
+    new.parse_document(file_path, mime_type, capture_date)
   end
 
   def parse_document(file_path, mime_type, capture_date = nil)

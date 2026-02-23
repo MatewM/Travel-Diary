@@ -2,7 +2,7 @@
 
 class ParseTicketService
   def self.call(ticket_id, capture_date = nil)
-    new(ticket_id).call
+    new(ticket_id).call(capture_date)
   end
 
   def initialize(ticket_id)
