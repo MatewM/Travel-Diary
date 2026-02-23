@@ -177,30 +177,20 @@ class TicketsController < ApplicationController
   end
 
   def extract_js_metadata_for_file(file)
-    # Extraer metadatos enviados desde JavaScript
-    file_metadata_params = params[:file_metadata] || {}
-    filename = file.original_filename
-    
-    if file_metadata_params[filename].present?
-      begin
-        js_metadata = JSON.parse(file_metadata_params[filename])
-        
-        # Convertir lastModified (milisegundos) a fecha Ruby
-        if js_metadata['lastModified']
-          last_modified_time = Time.at(js_metadata['lastModified'] / 1000.0)
-          js_metadata['creation_time'] = last_modified_time.iso8601
-          js_metadata['creation_year'] = last_modified_time.year
-          js_metadata['source'] = 'javascript'
-        end
-        
-        Rails.logger.info "[TicketsController] Found JS metadata for #{filename}: lastModified=#{js_metadata['lastModified']} -> #{js_metadata['creation_time']}"
-        return js_metadata
-        
-      rescue JSON::ParserError => e
-        Rails.logger.warn "[TicketsController] Failed to parse JS metadata for #{filename}: #{e.message}"
-      end
+    # 1. Parsear el JSON una sola vez
+    @parsed_all_meta ||= params[:all_files_metadata].present? ? JSON.parse(params[:all_files_metadata]) : {}
+
+    # 2. Buscar por el nombre del archivo
+    js_data = @parsed_all_meta[file.original_filename]
+
+    if js_data.present?
+      Rails.logger.info "[TicketsController] ✅ Metadata JS encontrada para #{file.original_filename}: #{js_data}"
+      js_data
+    else
+      Rails.logger.warn "[TicketsController] ⚠️ No hay metadata JS para #{file.original_filename}"
+      {}
     end
-    
+  rescue JSON::ParserError
     {}
   end
 

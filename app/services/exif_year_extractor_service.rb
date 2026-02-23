@@ -13,28 +13,27 @@ class ExifYearExtractorService
   end
 
   def call
-    # Primero intentar EXIF (solo para fotos reales)
+    # PRIORIDAD 1: Metadatos originales capturados por JS (los que guardamos en original_file_metadata)
+    year = extract_from_original_metadata
+    if year
+      Rails.logger.info "[ExifYearExtractor] ✅ Usando año de JavaScript: #{year}"
+      return year.to_s
+    end
+
+    # PRIORIDAD 2: EXIF real del archivo (solo si lo anterior falla)
     year = extract_from_exif if jpeg?
-    
     if year
       Rails.logger.info "[ExifYearExtractor] Found EXIF year: #{year}"
       return year.to_s
     end
-    
-    # Si no hay EXIF, usar metadatos originales guardados (screenshots, PDFs, etc.)
-    year = extract_from_original_metadata
-    if year
-      Rails.logger.info "[ExifYearExtractor] Found original metadata year: #{year}"
-      return year.to_s
-    end
-    
+
     # Fallback: usar metadatos del archivo procesado
     year = extract_from_file_metadata
     if year
       Rails.logger.info "[ExifYearExtractor] Found processed file metadata year: #{year}"
       return year.to_s
     end
-    
+
     Rails.logger.info "[ExifYearExtractor] No metadata found"
     nil
   end
@@ -57,22 +56,29 @@ class ExifYearExtractorService
   end
   
   def extract_from_original_metadata
-    return nil unless @original_metadata&.dig('creation_year')
-    
-    year = @original_metadata['creation_year']
-    creation_time = @original_metadata['creation_time']
-    source = @original_metadata['source'] || 'unknown'
-    
-    Rails.logger.info "[ExifYearExtractor] Original metadata (#{source}): #{creation_time} (year: #{year})"
-    
-    # Solo usar la fecha si es razonablemente reciente
-    current_year = Time.current.year
-    
-    if year >= (current_year - 2) && year <= current_year
-      Rails.logger.info "[ExifYearExtractor] ✅ Using #{source} metadata year #{year} (within reasonable range)"
-      year
+    return nil if @original_metadata.blank?
+
+    # El JS envía 'lastModified', intentamos sacarlo de ahí
+    timestamp = @original_metadata['lastModified']
+    if timestamp
+      # Convertir de milisegundos (JS) a segundos (Ruby)
+      year = Time.at(timestamp / 1000.0).year
+      source = @original_metadata['source'] || 'javascript'
+
+      Rails.logger.info "[ExifYearExtractor] Original metadata (#{source}): timestamp #{timestamp} -> year #{year}"
+
+      # Solo usar la fecha si es razonablemente reciente
+      current_year = Time.current.year
+
+      if year >= (current_year - 2) && year <= current_year
+        Rails.logger.info "[ExifYearExtractor] ✅ Using #{source} metadata year #{year} (within reasonable range)"
+        year
+      else
+        Rails.logger.warn "[ExifYearExtractor] ❌ #{source} metadata year #{year} seems unrealistic, ignoring"
+        nil
+      end
     else
-      Rails.logger.warn "[ExifYearExtractor] ❌ #{source} metadata year #{year} seems unrealistic, ignoring"
+      Rails.logger.warn "[ExifYearExtractor] No lastModified timestamp in original metadata"
       nil
     end
   rescue => e
