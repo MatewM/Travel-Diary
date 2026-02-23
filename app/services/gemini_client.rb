@@ -296,7 +296,6 @@ PROMPT
 
     # Añadir bloque FILE METADATA para activar RULE 2 si tenemos fecha del archivo original
     if capture_date
-      capture_day_month = capture_date.strftime("%m-%d")  # Solo mes-día para comparación
       capture_year = capture_date.year
       prompt_text += "\n\n--- FILE METADATA (applies to RULE 2 above) ---\n" \
                      "ORIGINAL FILE METADATA: This file was originally created/modified on #{capture_date.strftime('%Y-%m-%d')} (extracted from EXIF, file system, or original metadata).\n" \
