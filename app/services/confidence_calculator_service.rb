@@ -37,12 +37,12 @@ class ConfidenceCalculatorService
     #   issues << field if val.present? && !Airport.exists?(iata_code: val)
     # end
 
-    # Signal 4 — confianza baja declarada por el propio Gemini
-    # Horas son opcionales — no penalizar si faltan
-    %i[departure_time arrival_time].each do |opt_field|
-      next unless @data.dig(:confidence, opt_field.to_s)
-      issues << opt_field.to_sym if @data.dig(:confidence, opt_field.to_s) == "low" && !has_valid_date
-    end
+    # Signal 4 — ELIMINADO: Las horas son opcionales y no afectan el estado del ticket
+    # No penalizar campos opcionales (departure_time, arrival_time) por baja confianza
+    # %i[departure_time arrival_time].each do |opt_field|
+    #   next unless @data.dig(:confidence, opt_field.to_s)
+    #   issues << opt_field.to_sym if @data.dig(:confidence, opt_field.to_s) == "low" && !has_valid_date
+    # end
 
     # Campos obligatorios sí penalizan
     CORE_CONFIDENCE_FIELDS.each do |field|

@@ -1,118 +1,63 @@
 # frozen_string_literal: true
-require 'exifr/jpeg'
 
 class ExifYearExtractorService
-  def self.call(filepath, mimetype, original_metadata: nil)
-    new(filepath, mimetype, original_metadata).call
+  def self.call(ticket)
+    new(ticket).call
   end
 
-  def initialize(filepath, mimetype, original_metadata)
-    @filepath = filepath
-    @mimetype = mimetype
-    @original_metadata = original_metadata
+  def initialize(ticket)
+    @ticket = ticket
   end
 
   def call
-    # PRIORIDAD 1: Metadatos originales capturados por JS (los que guardamos en original_file_metadata)
-    full_date = extract_full_date_from_original_metadata
+    # IMPORTANTE: Los archivos son SCREENSHOTS de billetes
+    # Necesitamos la fecha de cuando se creó el screenshot, NO cuando se subió a Rails
+    full_date = extract_screenshot_creation_date
     if full_date
-      Rails.logger.info "[ExifYearExtractor] ✅ Usando fecha completa de JavaScript: #{full_date}"
+      Rails.logger.info "[ExifYearExtractor] ✅ Using screenshot creation date: #{full_date}"
       return { full_date: full_date, year: full_date.year.to_s }
     end
 
-    # PRIORIDAD 2: EXIF real del archivo (solo si lo anterior falla)
-    full_date = extract_full_date_from_exif if jpeg?
-    if full_date
-      Rails.logger.info "[ExifYearExtractor] Found EXIF full date: #{full_date}"
-      return { full_date: full_date, year: full_date.year.to_s }
-    end
-
-    # Fallback: usar metadatos del archivo procesado
-    full_date = extract_full_date_from_file_metadata
-    if full_date
-      Rails.logger.info "[ExifYearExtractor] Found processed file metadata full date: #{full_date}"
-      return { full_date: full_date, year: full_date.year.to_s }
-    end
-
-    Rails.logger.info "[ExifYearExtractor] No metadata found"
-    nil
+    # FALLBACK: Solo usar ticket.created_at si no hay metadata del screenshot
+    ticket_creation_date = @ticket.created_at
+    Rails.logger.info "[ExifYearExtractor] ❌ No screenshot metadata available, fallback to ticket creation date: #{ticket_creation_date}"
+    
+    { full_date: ticket_creation_date, year: ticket_creation_date.year.to_s }
   end
 
   private
 
-  def jpeg?
-    @mimetype.to_s.include?('jpeg') || @mimetype.to_s.include?('jpg')
-  end
+  def extract_screenshot_creation_date
+    # IMPORTANTE: Los archivos son SCREENSHOTS de billetes, NO fotos con EXIF
+    # La fecha relevante es CUANDO SE HIZO EL SCREENSHOT (lastModified del archivo original)
+    
+    # PRIORIDAD ÚNICA: JavaScript lastModified (fecha cuando se creó el screenshot)
+    original_metadata = @ticket.original_file_metadata
+    if original_metadata.present?
+      timestamp = original_metadata['lastModified']
+      if timestamp
+        full_date = Time.at(timestamp / 1000.0).utc
+        year = full_date.year
+        current_year = Time.current.year
 
-  def extract_full_date_from_exif
-    exif = EXIFR::JPEG.new(@filepath)
-    return nil unless exif.exif?
-    # Usamos date_time_original (cuando se tomó la foto), NO date_time (cuando se modificó)
-    date = exif.date_time_original || exif.date_time
-    date
-  rescue => e
-    Rails.logger.warn "[ExifYearExtractor] EXIF read failed: #{e.message}"
-    nil
-  end
-  
-  def extract_full_date_from_original_metadata
-    return nil if @original_metadata.blank?
-
-    # El JS envía 'lastModified', intentamos sacarlo de ahí
-    timestamp = @original_metadata['lastModified']
-    if timestamp
-      # Convertir de milisegundos (JS) a segundos (Ruby)
-      full_date = Time.at(timestamp / 1000.0).utc
-      year = full_date.year
-      source = @original_metadata['source'] || 'javascript'
-
-      Rails.logger.info "[ExifYearExtractor] Original metadata (#{source}): timestamp #{timestamp} -> full_date #{full_date}"
-
-      # Solo usar la fecha si es razonablemente reciente
-      current_year = Time.current.year
-
-      if year >= (current_year - 2) && year <= current_year
-        Rails.logger.info "[ExifYearExtractor] ✅ Using #{source} metadata full date #{full_date} (within reasonable range)"
-        full_date
+        # Solo usar si está en rango razonable (±2 años)
+        if year >= (current_year - 2) && year <= current_year
+          Rails.logger.info "[ExifYearExtractor] ✅ Using screenshot creation date (lastModified): #{full_date}"
+          return full_date
+        else
+          Rails.logger.warn "[ExifYearExtractor] ⚠️ Screenshot date #{full_date} outside reasonable range (#{current_year-2}-#{current_year})"
+        end
       else
-        Rails.logger.warn "[ExifYearExtractor] ❌ #{source} metadata full date #{full_date} seems unrealistic, ignoring"
-        nil
+        Rails.logger.warn "[ExifYearExtractor] ⚠️ No lastModified timestamp in metadata"
       end
     else
-      Rails.logger.warn "[ExifYearExtractor] No lastModified timestamp in original metadata"
-      nil
+      Rails.logger.warn "[ExifYearExtractor] ⚠️ No original_file_metadata available"
     end
-  rescue => e
-    Rails.logger.warn "[ExifYearExtractor] Original metadata read failed: #{e.message}"
+
+    # NO intentar EXIF (screenshots no tienen date_time_original)
+    # NO usar file system timestamps (siempre son fecha de upload a Rails)
+    Rails.logger.warn "[ExifYearExtractor] ❌ No screenshot creation date available in metadata"
     nil
   end
 
-  def extract_full_date_from_file_metadata
-    return nil unless File.exist?(@filepath)
-    
-    # Intentar usar birthtime (fecha de creación) primero, fallback a mtime
-    file_time = begin
-      File.birthtime(@filepath)  # Fecha de creación (cuando se tomó el screenshot)
-    rescue NotImplementedError
-      File.mtime(@filepath)      # Fallback para sistemas que no soportan birthtime
-    end
-    
-    Rails.logger.info "[ExifYearExtractor] Processed file timestamp: #{file_time}"
-    
-    # Solo usar la fecha del archivo si es razonablemente reciente
-    # (asumimos que el usuario sube screenshots dentro de 2 años de tomarlos)
-    current_year = Time.current.year
-    file_year = file_time.year
-    
-    if file_year >= (current_year - 2) && file_year <= current_year
-      Rails.logger.info "[ExifYearExtractor] Using processed file metadata full date #{file_time} (within reasonable range)"
-      file_time
-    else
-      Rails.logger.warn "[ExifYearExtractor] Processed file metadata full date #{file_time} seems unrealistic, ignoring"
-      nil
-    end
-  rescue => e
-    Rails.logger.warn "[ExifYearExtractor] Processed file metadata read failed: #{e.message}"
-    nil
-  end
 end

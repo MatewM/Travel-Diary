@@ -94,11 +94,10 @@ RULE 2 — METADATA CONFIRMATION → confidence: "high"
   ⚠ PREREQUISITE: This rule ONLY applies when a "--- FILE METADATA ---" block
   is explicitly present at the END of this prompt. If no such block exists,
   skip this rule entirely and proceed directly to Rule 3.
-  When the block IS present: verify that the capture date is 0 to 3 days BEFORE
-  the flight day+month you extracted. This is logically consistent with a user
-  photographing their ticket just before departure.
-  If the metadata date is AFTER the flight date, or the gap exceeds 7 days,
-  this rule does NOT apply — treat metadata as unreliable.
+  When the block IS present: verify that the original file creation/modification date 
+  is within ±30 days of the flight date you extracted. This indicates the file was 
+  created around the time of travel, making the metadata temporally reliable.
+  If the gap exceeds 30 days, this rule does NOT apply — treat metadata as unreliable.
   → Set year_source: "metadata_match", year_requires_verification: false.
 
 RULE 3 — WEEKDAY + CALENDAR/ROUTE MATCH → confidence: "high"
@@ -289,23 +288,26 @@ PROMPT
 
   def build_prompt_with_metadata(target_year, capture_date)
     prompt_text = PROMPT.dup
-    
+
     # Añadir contexto del año si está disponible
     if target_year
       prompt_text += "\n\nCONTEXT: TARGET_YEAR=#{target_year}. Use this year for any date where the year is not explicitly printed on the document."
     end
-    
-    # Añadir bloque FILE METADATA para activar RULE 2 si tenemos fecha de captura
+
+    # Añadir bloque FILE METADATA para activar RULE 2 si tenemos fecha del archivo original
     if capture_date
       capture_day_month = capture_date.strftime("%m-%d")  # Solo mes-día para comparación
       capture_year = capture_date.year
       prompt_text += "\n\n--- FILE METADATA (applies to RULE 2 above) ---\n" \
-                     "Photo capture date (month-day only): #{capture_day_month}\n" \
-                     "If the flight date falls within 0-3 days AFTER this capture month-day, set confidence 'high' for flight_date.\n" \
-                     "Additionally, use #{capture_year} as the flight year with confidence 'high' since the photo was taken in #{capture_year}.\n" \
-                     "This indicates the photo was taken just before or on the departure date, making the metadata reliable."
+                     "ORIGINAL FILE METADATA: This file was originally created/modified on #{capture_date.strftime('%Y-%m-%d')} (extracted from EXIF, file system, or original metadata).\n" \
+                     "VALIDATION RULE: Flight dates within ±30 days of this original file date are considered reliable.\n" \
+                     "CONFIDENCE ASSIGNMENT: If the extracted flight date is within 30 days of #{capture_date.strftime('%Y-%m-%d')}, set:\n" \
+                     "- flight_date confidence: \"high\"\n" \
+                     "- year_source: \"metadata_match\"\n" \
+                     "- year_requires_verification: false\n" \
+                     "- Use #{capture_year} as the confirmed flight year"
     end
-    
+
     prompt_text
   end
 end

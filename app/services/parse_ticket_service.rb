@@ -23,22 +23,13 @@ class ParseTicketService
     filepath = ActiveStorage::Blob.service.path_for(attachment.blob.key)
     mimetype = attachment.content_type
 
-    # Extraer fecha completa desde EXIF o metadatos originales
-    extraction_result = ExifYearExtractorService.call(
-      filepath, 
-      mimetype, 
-      original_metadata: ticket.original_file_metadata
-    )
-    
-    if extraction_result
-      full_date = extraction_result[:full_date]
-      target_year = extraction_result[:year]
-      Rails.logger.info "[ParseTicketService] Using EXIF full_date=#{full_date}, target_year=#{target_year} for ticket #{@ticket_id}"
-      raw_response = GeminiClient.parse_document(filepath, mimetype, target_year: target_year, capture_date: full_date)
-    else
-      Rails.logger.info "[ParseTicketService] No EXIF date found, letting Gemini infer for ticket #{@ticket_id}"
-      raw_response = GeminiClient.parse_document(filepath, mimetype)
-    end
+    # Extraer fecha usando ticket.created_at como base robusta
+    extraction_result = ExifYearExtractorService.call(ticket)
+
+    full_date = extraction_result[:full_date]
+    target_year = extraction_result[:year]
+    Rails.logger.info "[ParseTicketService] Using ticket creation date=#{full_date}, target_year=#{target_year} for ticket #{@ticket_id}"
+    raw_response = GeminiClient.parse_document(filepath, mimetype, target_year: target_year, capture_date: full_date)
     parsed_data  = JSON.parse(raw_response)
 
     confidence_result = ConfidenceCalculatorService.call(parsed_data)
