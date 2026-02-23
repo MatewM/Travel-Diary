@@ -132,15 +132,15 @@ RULE 6 — METADATA CONTRADICTION OR AMBIGUITY → confidence: "low" or "medium"
 NEVER set flight_date confidence to "high" based solely on a visible day and month.
 PROMPT
 
-  def self.parse_document(filepath, mimetype, target_year: nil)
-    if target_year
-      new.parse_document(filepath, mimetype, target_year: target_year)
+  def self.parse_document(filepath, mimetype, target_year: nil, capture_date: nil)
+    if target_year || capture_date
+      new.parse_document(filepath, mimetype, target_year: target_year, capture_date: capture_date)
     else
       new.parse_document(filepath, mimetype)
     end
   end
 
-  def parse_document(filepath, mimetype, target_year: nil)
+  def parse_document(filepath, mimetype, target_year: nil, capture_date: nil)
     encoded = Base64.strict_encode64(File.binread(filepath))
 
     body = {
@@ -148,9 +148,7 @@ PROMPT
         {
           parts: [
             { 
-              text: target_year ? 
-                "#{PROMPT}\n\nCONTEXT: TARGET_YEAR=#{target_year}. Use this year for any date where the year is not explicitly printed on the document." :
-                PROMPT
+              text: build_prompt_with_metadata(target_year, capture_date)
             },
             {
               inline_data: {
@@ -287,5 +285,27 @@ PROMPT
     api_key = Rails.application.credentials.dig(:gemini, :api_key)
     raise "GEMINI_API_KEY not configured" unless api_key.present?
     api_key
+  end
+
+  def build_prompt_with_metadata(target_year, capture_date)
+    prompt_text = PROMPT.dup
+    
+    # Añadir contexto del año si está disponible
+    if target_year
+      prompt_text += "\n\nCONTEXT: TARGET_YEAR=#{target_year}. Use this year for any date where the year is not explicitly printed on the document."
+    end
+    
+    # Añadir bloque FILE METADATA para activar RULE 2 si tenemos fecha de captura
+    if capture_date
+      capture_day_month = capture_date.strftime("%m-%d")  # Solo mes-día para comparación
+      capture_year = capture_date.year
+      prompt_text += "\n\n--- FILE METADATA (applies to RULE 2 above) ---\n" \
+                     "Photo capture date (month-day only): #{capture_day_month}\n" \
+                     "If the flight date falls within 0-3 days AFTER this capture month-day, set confidence 'high' for flight_date.\n" \
+                     "Additionally, use #{capture_year} as the flight year with confidence 'high' since the photo was taken in #{capture_year}.\n" \
+                     "This indicates the photo was taken just before or on the departure date, making the metadata reliable."
+    end
+    
+    prompt_text
   end
 end

@@ -14,24 +14,24 @@ class ExifYearExtractorService
 
   def call
     # PRIORIDAD 1: Metadatos originales capturados por JS (los que guardamos en original_file_metadata)
-    year = extract_from_original_metadata
-    if year
-      Rails.logger.info "[ExifYearExtractor] ✅ Usando año de JavaScript: #{year}"
-      return year.to_s
+    full_date = extract_full_date_from_original_metadata
+    if full_date
+      Rails.logger.info "[ExifYearExtractor] ✅ Usando fecha completa de JavaScript: #{full_date}"
+      return { full_date: full_date, year: full_date.year.to_s }
     end
 
     # PRIORIDAD 2: EXIF real del archivo (solo si lo anterior falla)
-    year = extract_from_exif if jpeg?
-    if year
-      Rails.logger.info "[ExifYearExtractor] Found EXIF year: #{year}"
-      return year.to_s
+    full_date = extract_full_date_from_exif if jpeg?
+    if full_date
+      Rails.logger.info "[ExifYearExtractor] Found EXIF full date: #{full_date}"
+      return { full_date: full_date, year: full_date.year.to_s }
     end
 
     # Fallback: usar metadatos del archivo procesado
-    year = extract_from_file_metadata
-    if year
-      Rails.logger.info "[ExifYearExtractor] Found processed file metadata year: #{year}"
-      return year.to_s
+    full_date = extract_full_date_from_file_metadata
+    if full_date
+      Rails.logger.info "[ExifYearExtractor] Found processed file metadata full date: #{full_date}"
+      return { full_date: full_date, year: full_date.year.to_s }
     end
 
     Rails.logger.info "[ExifYearExtractor] No metadata found"
@@ -44,37 +44,38 @@ class ExifYearExtractorService
     @mimetype.to_s.include?('jpeg') || @mimetype.to_s.include?('jpg')
   end
 
-  def extract_from_exif
+  def extract_full_date_from_exif
     exif = EXIFR::JPEG.new(@filepath)
     return nil unless exif.exif?
     # Usamos date_time_original (cuando se tomó la foto), NO date_time (cuando se modificó)
     date = exif.date_time_original || exif.date_time
-    date&.year
+    date
   rescue => e
     Rails.logger.warn "[ExifYearExtractor] EXIF read failed: #{e.message}"
     nil
   end
   
-  def extract_from_original_metadata
+  def extract_full_date_from_original_metadata
     return nil if @original_metadata.blank?
 
     # El JS envía 'lastModified', intentamos sacarlo de ahí
     timestamp = @original_metadata['lastModified']
     if timestamp
       # Convertir de milisegundos (JS) a segundos (Ruby)
-      year = Time.at(timestamp / 1000.0).year
+      full_date = Time.at(timestamp / 1000.0).utc
+      year = full_date.year
       source = @original_metadata['source'] || 'javascript'
 
-      Rails.logger.info "[ExifYearExtractor] Original metadata (#{source}): timestamp #{timestamp} -> year #{year}"
+      Rails.logger.info "[ExifYearExtractor] Original metadata (#{source}): timestamp #{timestamp} -> full_date #{full_date}"
 
       # Solo usar la fecha si es razonablemente reciente
       current_year = Time.current.year
 
       if year >= (current_year - 2) && year <= current_year
-        Rails.logger.info "[ExifYearExtractor] ✅ Using #{source} metadata year #{year} (within reasonable range)"
-        year
+        Rails.logger.info "[ExifYearExtractor] ✅ Using #{source} metadata full date #{full_date} (within reasonable range)"
+        full_date
       else
-        Rails.logger.warn "[ExifYearExtractor] ❌ #{source} metadata year #{year} seems unrealistic, ignoring"
+        Rails.logger.warn "[ExifYearExtractor] ❌ #{source} metadata full date #{full_date} seems unrealistic, ignoring"
         nil
       end
     else
@@ -86,7 +87,7 @@ class ExifYearExtractorService
     nil
   end
 
-  def extract_from_file_metadata
+  def extract_full_date_from_file_metadata
     return nil unless File.exist?(@filepath)
     
     # Intentar usar birthtime (fecha de creación) primero, fallback a mtime
@@ -96,7 +97,7 @@ class ExifYearExtractorService
       File.mtime(@filepath)      # Fallback para sistemas que no soportan birthtime
     end
     
-    Rails.logger.info "[ExifYearExtractor] Processed file timestamp: #{file_time} (#{file_time.year})"
+    Rails.logger.info "[ExifYearExtractor] Processed file timestamp: #{file_time}"
     
     # Solo usar la fecha del archivo si es razonablemente reciente
     # (asumimos que el usuario sube screenshots dentro de 2 años de tomarlos)
@@ -104,10 +105,10 @@ class ExifYearExtractorService
     file_year = file_time.year
     
     if file_year >= (current_year - 2) && file_year <= current_year
-      Rails.logger.info "[ExifYearExtractor] Using processed file metadata year #{file_year} (within reasonable range)"
-      file_year
+      Rails.logger.info "[ExifYearExtractor] Using processed file metadata full date #{file_time} (within reasonable range)"
+      file_time
     else
-      Rails.logger.warn "[ExifYearExtractor] Processed file metadata year #{file_year} seems unrealistic, ignoring"
+      Rails.logger.warn "[ExifYearExtractor] Processed file metadata full date #{file_time} seems unrealistic, ignoring"
       nil
     end
   rescue => e
