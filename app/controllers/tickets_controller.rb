@@ -27,7 +27,22 @@ class TicketsController < ApplicationController
     end
 
     created_tickets = files.filter_map do |file|
-      ticket = current_user.tickets.new(status: :pending_parse, original_files: [file])
+      # Obtener metadatos capturados desde JavaScript (si existen)
+      js_metadata = extract_js_metadata_for_file(file)
+      
+      # Extraer metadatos del archivo como fallback
+      file_metadata = FileMetadataExtractorService.call(file)
+      
+      # PRIORIDAD: Usar metadatos de JavaScript si están disponibles
+      final_metadata = js_metadata.present? ? js_metadata.merge(file_metadata) : file_metadata
+      
+      Rails.logger.info "[TicketsController] Using metadata for #{file.original_filename}: #{final_metadata.inspect}"
+      
+      ticket = current_user.tickets.new(
+        status: :pending_parse, 
+        original_files: [file],
+        original_file_metadata: final_metadata
+      )
       ticket.save ? ticket : nil
     end
 
@@ -159,6 +174,34 @@ class TicketsController < ApplicationController
   def uploaded_files
     raw = params.dig(:ticket, :original_files) || []
     Array(raw).reject { |f| f.blank? || !f.respond_to?(:content_type) }
+  end
+
+  def extract_js_metadata_for_file(file)
+    # Extraer metadatos enviados desde JavaScript
+    file_metadata_params = params[:file_metadata] || {}
+    filename = file.original_filename
+    
+    if file_metadata_params[filename].present?
+      begin
+        js_metadata = JSON.parse(file_metadata_params[filename])
+        
+        # Convertir lastModified (milisegundos) a fecha Ruby
+        if js_metadata['lastModified']
+          last_modified_time = Time.at(js_metadata['lastModified'] / 1000.0)
+          js_metadata['creation_time'] = last_modified_time.iso8601
+          js_metadata['creation_year'] = last_modified_time.year
+          js_metadata['source'] = 'javascript'
+        end
+        
+        Rails.logger.info "[TicketsController] Found JS metadata for #{filename}: lastModified=#{js_metadata['lastModified']} -> #{js_metadata['creation_time']}"
+        return js_metadata
+        
+      rescue JSON::ParserError => e
+        Rails.logger.warn "[TicketsController] Failed to parse JS metadata for #{filename}: #{e.message}"
+      end
+    end
+    
+    {}
   end
 
   def ticket_params

@@ -132,21 +132,29 @@ RULE 6 — METADATA CONTRADICTION OR AMBIGUITY → confidence: "low" or "medium"
 NEVER set flight_date confidence to "high" based solely on a visible day and month.
 PROMPT
 
-  def self.parse_document(file_path, mime_type, capture_date = nil)
-    new.parse_document(file_path, mime_type, capture_date)
+  def self.parse_document(filepath, mimetype, target_year: nil)
+    if target_year
+      new.parse_document(filepath, mimetype, target_year: target_year)
+    else
+      new.parse_document(filepath, mimetype)
+    end
   end
 
-  def parse_document(file_path, mime_type, capture_date = nil)
-    encoded = Base64.strict_encode64(File.binread(file_path))
+  def parse_document(filepath, mimetype, target_year: nil)
+    encoded = Base64.strict_encode64(File.binread(filepath))
 
     body = {
       contents: [
         {
           parts: [
-            { text: build_prompt_with_metadata(capture_date) },
+            { 
+              text: target_year ? 
+                "#{PROMPT}\n\nCONTEXT: TARGET_YEAR=#{target_year}. Use this year for any date where the year is not explicitly printed on the document." :
+                PROMPT
+            },
             {
               inline_data: {
-                mime_type: mime_type,
+                mime_type: mimetype,
                 data: encoded
               }
             }
@@ -259,19 +267,6 @@ PROMPT
   end
 
   private
-
-  def build_prompt_with_metadata(capture_date)
-    dynamic_prompt = PROMPT.dup
-    if capture_date.present?
-      dynamic_prompt += "\n\n--- FILE METADATA (applies to RULE 2 above) ---\n" \
-        "File capture/creation date: #{capture_date}\n" \
-        "Use this date to apply RULE 2: if the flight day+month falls 0 to 3 days " \
-        "AFTER this capture date, Rule 2 is satisfied and confidence 'high' is permitted.\n" \
-        "If the gap is larger than 7 days or inverted (flight before capture date), " \
-        "ignore this metadata entirely and fall back to Rules 3-5."
-    end
-    dynamic_prompt
-  end
 
   private
 

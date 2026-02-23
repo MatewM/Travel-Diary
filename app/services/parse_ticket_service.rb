@@ -1,15 +1,17 @@
 # frozen_string_literal: true
 
 class ParseTicketService
-  def self.call(ticket_id, capture_date = nil)
-    new(ticket_id).call(capture_date)
+  # Interfaz pública: ya NO acepta capture_date desde fuera.
+  # El servicio lo calcula internamente.
+  def self.call(ticket_id)
+    new(ticket_id).call
   end
 
   def initialize(ticket_id)
     @ticket_id = ticket_id
   end
 
-  def call(capture_date = nil)
+  def call
     ticket = Ticket.find(@ticket_id)
 
     attachment = ticket.original_files.first
@@ -18,12 +20,23 @@ class ParseTicketService
       return { success: false, error: "No file attached" }
     end
 
-    # path_for works with disk storage (development/test).
-    # In production with S3, the job downloads the blob to a tempfile first.
-    file_path  = ActiveStorage::Blob.service.path_for(attachment.blob.key)
-    mime_type  = attachment.content_type
+    filepath = ActiveStorage::Blob.service.path_for(attachment.blob.key)
+    mimetype = attachment.content_type
 
-    raw_response = GeminiClient.parse_document(file_path, mime_type, capture_date)
+    # Extraer año desde EXIF o metadatos originales
+    target_year = ExifYearExtractorService.call(
+      filepath, 
+      mimetype, 
+      original_metadata: ticket.original_file_metadata
+    )
+    
+    if target_year
+      Rails.logger.info "[ParseTicketService] Using EXIF target_year=#{target_year} for ticket #{@ticket_id}"
+      raw_response = GeminiClient.parse_document(filepath, mimetype, target_year: target_year)
+    else
+      Rails.logger.info "[ParseTicketService] No EXIF year found, letting Gemini infer for ticket #{@ticket_id}"
+      raw_response = GeminiClient.parse_document(filepath, mimetype)
+    end
     parsed_data  = JSON.parse(raw_response)
 
     confidence_result = ConfidenceCalculatorService.call(parsed_data)
@@ -62,13 +75,12 @@ class ParseTicketService
     # Asegurar que siempre actualizamos el ticket, incluso si hay problemas
     begin
       ticket&.update_columns(
-        status:     "error",
+        status: :error,
         parsed_data: { error: error_message, timestamp: Time.current.iso8601 },
         updated_at: Time.current
       )
     rescue StandardError => update_error
-      # Si falla la actualización, al menos loguear el error
-      Rails.logger.error "Failed to update ticket #{ticket_id} status: #{update_error.message}"
+      Rails.logger.error "Failed to update ticket #{@ticket_id}: #{update_error.message}"
     end
 
     { success: false, error: error_message }

@@ -61,10 +61,16 @@ export default class extends Controller {
 
   // — API interna (usada por tests y lógica interna) —
 
-  addFiles(incoming) {
+  async addFiles(incoming) {
     const existing = this.files.map(f => f.name + f.size)
     const deduplicated = Array.from(incoming)
       .filter(f => !existing.includes(f.name + f.size))
+    
+    // CRÍTICO: Capturar metadatos de cada archivo ANTES de procesarlo
+    for (const file of deduplicated) {
+      await this.#captureFileMetadata(file)
+    }
+    
     this.files = [...this.files, ...deduplicated]
     this.#syncInput()
     this.#updatePreview()
@@ -134,5 +140,50 @@ export default class extends Controller {
     if (bytes < 1024) return `${bytes} B`
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+  }
+
+  async #captureFileMetadata(file) {
+    try {
+      // CAPTURAR METADATOS DEL ARCHIVO ORIGINAL (antes de que se pierdan)
+      const metadata = {
+        filename: file.name,
+        size: file.size,
+        type: file.type,
+        lastModified: file.lastModified, // Timestamp en milisegundos
+        lastModifiedDate: new Date(file.lastModified).toISOString()
+      }
+      
+      console.log(`[UploadController] Captured metadata for ${file.name}:`, metadata)
+      
+      // ALMACENAR metadatos en el objeto File para enviarlos al servidor
+      // Usamos una propiedad personalizada que Rails puede leer
+      file._originalMetadata = metadata
+      
+      // ALTERNATIVA: Crear un input hidden con los metadatos
+      this.#addMetadataToForm(file.name, metadata)
+      
+    } catch (error) {
+      console.warn(`[UploadController] Failed to capture metadata for ${file.name}:`, error)
+    }
+  }
+
+  #addMetadataToForm(filename, metadata) {
+    // Crear un input hidden con los metadatos para que Rails los reciba
+    const form = this.element.closest('form')
+    if (!form) return
+    
+    // Remover metadatos previos para este archivo (si existen)
+    const existingInput = form.querySelector(`input[name="file_metadata[${filename}]"]`)
+    if (existingInput) existingInput.remove()
+    
+    // Crear nuevo input con los metadatos
+    const input = document.createElement('input')
+    input.type = 'hidden'
+    input.name = `file_metadata[${filename}]`
+    input.value = JSON.stringify(metadata)
+    
+    form.appendChild(input)
+    
+    console.log(`[UploadController] Added metadata input for ${filename}`)
   }
 }

@@ -21,6 +21,7 @@ gem "image_processing", "~> 1.2"
 gem "dotenv-rails", groups: %i[development test]
 gem "view_component", "~> 3.10"
 gem "pdf-reader", "~> 2.12"
+gem "exifr"
 
 gem "omniauth-google-oauth2", "~> 1.1"
 gem "omniauth-apple", "~> 1.3"
