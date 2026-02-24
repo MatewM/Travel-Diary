@@ -29,6 +29,40 @@ class ParseTicketService
     full_date = extraction_result[:full_date]
     target_year = extraction_result[:year]
     Rails.logger.info "[ParseTicketService] Using ticket creation date=#{full_date}, target_year=#{target_year} for ticket #{@ticket_id}"
+
+    # B. INTENTO 1 - Vía Barcode/QR
+    bcbp_result = BarcodeExtractorService.call(filepath, capture_date: full_date)
+
+    if bcbp_result.present? && bcbp_result[:source] == :bcbp
+      parsed_data = bcbp_result
+
+      # Buscar países por IATA usando los aeropuertos
+      dep_country = Airport.find_by(iata_code: parsed_data[:departure_airport])&.country
+      arr_country = Airport.find_by(iata_code: parsed_data[:arrival_airport])&.country
+
+      # Determinar status basado en si la fecha viene del BCBP o de metadata
+      ticket_status = parsed_data[:date_status] == :autoverified ? :auto_verified : :needs_review
+
+      ticket.update_columns(
+        flight_number: parsed_data[:flight_number],
+        airline: parsed_data[:airline],
+        departure_airport: parsed_data[:departure_airport],
+        arrival_airport: parsed_data[:arrival_airport],
+        departure_datetime: Time.zone.parse(parsed_data[:flight_date]),
+        arrival_datetime: nil,
+        departure_country_id: dep_country&.id,
+        arrival_country_id: arr_country&.id,
+        status: ticket_status,
+        parsed_data: parsed_data,
+        updated_at: Time.current
+      )
+
+      ticket.reload
+      confidence_level = ticket_status == :auto_verified ? :high : :medium
+      return { success: true, ticket: ticket, confidence_level: confidence_level, launch_modal: ticket_status == :needs_review }
+    end
+
+    # C. INTENTO 2 - Fallback a Gemini
     raw_response = GeminiClient.parse_document(filepath, mimetype, target_year: target_year, capture_date: full_date)
     parsed_data  = JSON.parse(raw_response)
 

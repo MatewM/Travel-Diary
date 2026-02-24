@@ -18,16 +18,14 @@ RSpec.describe ParseTicketService do
       "airline"            => "Iberia",
       "departure_airport"  => "MAD",
       "arrival_airport"    => "LHR",
-      "departure_datetime" => "2025-06-01T10:00:00Z",
-      "arrival_datetime"   => "2025-06-01T12:00:00Z",
+      "flight_date"        => "2025-06-01T10:00:00Z",
       "passenger_name"     => "Jane Doe",
       "confidence"         => {
         "flight_number"      => "high",
         "airline"            => "high",
         "departure_airport"  => "high",
         "arrival_airport"    => "high",
-        "departure_datetime" => "high",
-        "arrival_datetime"   => "high"
+        "flight_date"        => "high"
       }
     }.to_json
   end
@@ -92,17 +90,100 @@ RSpec.describe ParseTicketService do
   end
 
   describe ".call" do
+    context 'when the ticket has a readable barcode (BCBP)' do
+      let!(:madrid) { create(:airport, :madrid) }
+      let!(:london) { create(:airport, :london) }
+
+      let(:bcbp_data) do
+        {
+          source: :bcbp,
+          flight_number: "UX6048",
+          airline: "UX",
+          departure_airport: "MAD",
+          arrival_airport: "LHR",
+          flight_date: "2025-06-14T00:00:00Z",
+          date_status: :autoverified
+        }
+      end
+
+      before do
+        allow(BarcodeExtractorService).to receive(:call).and_return(bcbp_data)
+        allow(GeminiClient).to receive(:parse_document)
+      end
+
+      it 'does not call GeminiClient.parse_document' do
+        expect(GeminiClient).not_to receive(:parse_document)
+
+        described_class.call(ticket.id)
+      end
+
+      it 'updates the ticket with autoverified status and correct data' do
+        result = described_class.call(ticket.id)
+
+        expect(result[:success]).to be true
+        expect(result[:confidence_level]).to eq :high
+
+        ticket.reload
+        expect(ticket.status).to eq 'auto_verified'
+        expect(ticket.flight_number).to eq 'UX6048'
+        expect(ticket.airline).to eq 'UX'
+        expect(ticket.departure_airport).to eq 'MAD'
+        expect(ticket.arrival_airport).to eq 'LHR'
+        expect(ticket.departure_datetime).to eq Time.zone.parse('2025-06-14T00:00:00Z')
+        expect(ticket.arrival_datetime).to be_nil
+        expect(ticket.departure_country_id).to eq madrid.country.id
+        expect(ticket.arrival_country_id).to eq london.country.id
+        expect(ticket.parsed_data).to eq bcbp_data.stringify_keys.transform_values { |v| v.is_a?(Symbol) ? v.to_s : v }
+      end
+    end
+
+    context 'when the ticket has a barcode that needs review (uses capture_date)' do
+      let!(:madrid) { create(:airport, :madrid) }
+      let!(:london) { create(:airport, :london) }
+
+      let(:bcbp_data_needs_review) do
+        {
+          source: :bcbp,
+          flight_number: "UX6048",
+          airline: "UX",
+          departure_airport: "MAD",
+          arrival_airport: "LHR",
+          flight_date: "2025-06-14T00:00:00Z",
+          date_status: :needs_review
+        }
+      end
+
+      before do
+        allow(BarcodeExtractorService).to receive(:call).and_return(bcbp_data_needs_review)
+        allow(GeminiClient).to receive(:parse_document)
+      end
+
+      it 'updates the ticket with needs_review status' do
+        result = described_class.call(ticket.id)
+
+        expect(result[:success]).to be true
+        expect(result[:confidence_level]).to eq :medium
+
+        ticket.reload
+        expect(ticket.status).to eq 'needs_review'
+        expect(ticket.flight_number).to eq 'UX6048'
+        expect(ticket.departure_airport).to eq 'MAD'
+        expect(ticket.arrival_airport).to eq 'LHR'
+      end
+    end
+
     context "with high-confidence Gemini response and known airports" do
       let!(:madrid) { create(:airport, :madrid) }
       let!(:london) { create(:airport, :london) }
 
       it "sets status :auto_verified and persists extracted data" do
+        allow(BarcodeExtractorService).to receive(:call).and_return(nil)
         allow(GeminiClient).to receive(:parse_document).and_return(high_confidence_json)
 
         result = described_class.call(ticket.id)
 
         expect(result[:success]).to be true
-        expect(result[:confidence_level]).to eq(:high)
+        expect(result[:confidence_level]).to eq("high")
 
         ticket.reload
         expect(ticket.status).to eq("auto_verified")
@@ -118,6 +199,7 @@ RSpec.describe ParseTicketService do
       let!(:london) { create(:airport, :london) }
 
       it "sets status :needs_review or :manual_required and departure_country as nil" do
+        allow(BarcodeExtractorService).to receive(:call).and_return(nil)
         allow(GeminiClient).to receive(:parse_document).and_return(unknown_airport_json)
 
         result = described_class.call(ticket.id)
@@ -132,6 +214,7 @@ RSpec.describe ParseTicketService do
 
     context "when Gemini returns invalid JSON" do
       it "sets status :error and returns success: false" do
+        allow(BarcodeExtractorService).to receive(:call).and_return(nil)
         allow(GeminiClient).to receive(:parse_document).and_return("NOT JSON }{")
 
         result = described_class.call(ticket.id)
@@ -150,6 +233,7 @@ RSpec.describe ParseTicketService do
       let!(:london) { create(:airport, :london) }
 
       it "sets status :needs_review (date incoherence)" do
+        allow(BarcodeExtractorService).to receive(:call).and_return(nil)
         allow(GeminiClient).to receive(:parse_document).and_return(inverted_dates_json)
 
         result = described_class.call(ticket.id)
