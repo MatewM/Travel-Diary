@@ -5,11 +5,10 @@ require 'zxing'
 require 'uri'
 require 'cgi'
 
-class QrExtractorService
-  def self.call(filepath, capture_date: nil)
+class BarcodeExtractorService
+  def self.call(filepath, capture_date:)
     begin
       return nil if filepath.nil? || !File.exist?(filepath)
-      return nil unless filepath.match?(/\.(jpg|jpeg|png)$/i)
 
       # Try different approaches for ZXing.decode
       begin
@@ -30,9 +29,25 @@ class QrExtractorService
       end
       return nil if raw_string.nil? || raw_string.blank?
 
-      BcbpParserService.process_decoded_string(raw_string, capture_date)
+      result = BcbpParserService.process_decoded_string(raw_string, capture_date)
+
+      # Retornar datos BCBP si se pudo parsear, incluyendo el date_status
+      # para que ParseTicketService determine si es autoverified o needs_review
+      if result
+        {
+          source: :bcbp,
+          flight_number: result[:flight_number],
+          airline: result[:airline],
+          departure_airport: result[:departure_airport],
+          arrival_airport: result[:arrival_airport],
+          flight_date: result[:flight_date]&.iso8601,
+          date_status: result[:date_status]
+        }
+      else
+        nil
+      end
     rescue => e
-      Rails.logger.warn "QrExtractorService failed for #{filepath}: #{e.message}"
+      Rails.logger.warn "BarcodeExtractorService failed for #{filepath}: #{e.message}"
       nil
     end
   end
