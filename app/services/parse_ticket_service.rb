@@ -31,7 +31,9 @@ class ParseTicketService
     Rails.logger.info "[ParseTicketService] Using ticket creation date=#{full_date}, target_year=#{target_year} for ticket #{@ticket_id}"
 
     # B. INTENTO 1 - Vía Barcode/QR
+    Rails.logger.info "[ParseTicketService] Attempting BCBP extraction for ticket #{@ticket_id}"
     bcbp_result = BarcodeExtractorService.call(filepath, capture_date: full_date)
+    Rails.logger.info "[ParseTicketService] BCBP extraction result: #{bcbp_result.inspect}"
 
     if bcbp_result.present? && bcbp_result[:source] == :bcbp
       parsed_data = bcbp_result
@@ -64,10 +66,12 @@ class ParseTicketService
 
       ticket.reload
       confidence_level = ticket_status == :auto_verified ? :high : :medium
+      Rails.logger.info "[ParseTicketService] BCBP processing completed successfully. Status: #{ticket_status}, Flight: #{ticket.flight_number}"
       return { success: true, ticket: ticket, confidence_level: confidence_level, launch_modal: ticket_status == :needs_review }
     end
 
     # C. INTENTO 2 - Fallback a Gemini
+    Rails.logger.info "[ParseTicketService] No BCBP found, falling back to Gemini for ticket #{@ticket_id}"
     begin
       raw_response = GeminiClient.parse_document(filepath, mimetype, target_year: target_year, capture_date: full_date)
       parsed_data  = JSON.parse(raw_response)
