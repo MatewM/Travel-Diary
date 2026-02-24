@@ -11,22 +11,24 @@ class BarcodeExtractorService
       return nil if filepath.nil? || !File.exist?(filepath)
 
       # Try different approaches for ZXing.decode
+      raw_string = nil
       begin
         # First try: direct file path
         raw_string = ZXing.decode(filepath.to_s)
       rescue => e1
-        Rails.logger.warn "Direct path failed: #{e1.message}"
+        Rails.logger.warn "BarcodeExtractor direct path failed: #{e1.message}"
         begin
           # Second try: file:// URI
           file_uri = "file://#{filepath}"
           raw_string = ZXing.decode(file_uri)
         rescue => e2
-          Rails.logger.warn "File URI failed: #{e2.message}"
+          Rails.logger.warn "BarcodeExtractor file URI failed: #{e2.message}"
           # Third try: URI encoded
           encoded_path = "file://#{CGI.escape(filepath)}"
           raw_string = ZXing.decode(encoded_path)
         end
       end
+
       return nil if raw_string.nil? || raw_string.blank?
 
       result = BcbpParserService.process_decoded_string(raw_string, capture_date)
@@ -47,7 +49,7 @@ class BarcodeExtractorService
         nil
       end
     rescue => e
-      Rails.logger.warn "BarcodeExtractorService failed for #{filepath}: #{e.message}"
+      Rails.logger.error "BarcodeExtractorService failed for #{filepath}: #{e.message}"
       nil
     end
   end

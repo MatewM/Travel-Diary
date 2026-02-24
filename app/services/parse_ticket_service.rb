@@ -43,12 +43,17 @@ class ParseTicketService
       # Determinar status basado en si la fecha viene del BCBP o de metadata
       ticket_status = parsed_data[:date_status] == :autoverified ? :auto_verified : :needs_review
 
+      # Añadir launch_modal al parsed_data para que el frontend lo lea correctamente
+      parsed_data["launch_modal"] = ticket_status == :needs_review
+
+      departure_datetime = parsed_data[:flight_date].present? ? Time.zone.parse(parsed_data[:flight_date]) : nil
+
       ticket.update_columns(
         flight_number: parsed_data[:flight_number],
         airline: parsed_data[:airline],
         departure_airport: parsed_data[:departure_airport],
         arrival_airport: parsed_data[:arrival_airport],
-        departure_datetime: Time.zone.parse(parsed_data[:flight_date]),
+        departure_datetime: departure_datetime,
         arrival_datetime: nil,
         departure_country_id: dep_country&.id,
         arrival_country_id: arr_country&.id,
@@ -63,39 +68,41 @@ class ParseTicketService
     end
 
     # C. INTENTO 2 - Fallback a Gemini
-    raw_response = GeminiClient.parse_document(filepath, mimetype, target_year: target_year, capture_date: full_date)
-    parsed_data  = JSON.parse(raw_response)
+    begin
+      raw_response = GeminiClient.parse_document(filepath, mimetype, target_year: target_year, capture_date: full_date)
+      parsed_data  = JSON.parse(raw_response)
 
-    confidence_result = ConfidenceCalculatorService.call(parsed_data)
+      confidence_result = ConfidenceCalculatorService.call(parsed_data)
 
-    # Persistir launch_modal en jsonb para que parse_ticket_job pueda leerlo
-    parsed_data["launch_modal"] = confidence_result&.dig(:launch_modal) || false
+      # Persistir launch_modal en jsonb para que parse_ticket_job pueda leerlo
+      parsed_data["launch_modal"] = confidence_result&.dig(:launch_modal) || false
 
-    dep_country = Airport.find_by(iata_code: parsed_data["departure_airport"])&.country ||
-                  Country.find_by(code: parsed_data["departure_country"]&.upcase)
-    arr_country = Airport.find_by(iata_code: parsed_data["arrival_airport"])&.country ||
-                  Country.find_by(code: parsed_data["arrival_country"]&.upcase)
+      dep_country = Airport.find_by(iata_code: parsed_data["departure_airport"])&.country ||
+                    Country.find_by(code: parsed_data["departure_country"]&.upcase)
+      arr_country = Airport.find_by(iata_code: parsed_data["arrival_airport"])&.country ||
+                    Country.find_by(code: parsed_data["arrival_country"]&.upcase)
 
-    # update_columns bypasses model validations intentionally: Gemini-parsed data
-    # may contain incoherent dates or missing fields — those are handled by the
-    # confidence flow and the user review step, not by model guards.
-    ticket.update_columns(
-      flight_number:        parsed_data["flight_number"],
-      airline:              parsed_data["airline"],
-      departure_airport:    parsed_data["departure_airport"],
-      arrival_airport:      parsed_data["arrival_airport"],
-      departure_datetime:   parsed_data["flight_date"].present? ? Time.zone.parse(parsed_data["flight_date"]) : nil,
-      arrival_datetime:     nil, # Solo se rellena si el usuario lo confirma manualmente en la revisión
-      departure_country_id: dep_country&.id,
-      arrival_country_id:   arr_country&.id,
-      status:               confidence_result[:status].to_s,
-      parsed_data:          parsed_data,
-      updated_at:           Time.current
-    )
-    ticket.reload
+      # update_columns bypasses model validations intentionally: Gemini-parsed data
+      # may contain incoherent dates or missing fields — those are handled by the
+      # confidence flow and the user review step, not by model guards.
+      ticket.update_columns(
+        flight_number:        parsed_data["flight_number"],
+        airline:              parsed_data["airline"],
+        departure_airport:    parsed_data["departure_airport"],
+        arrival_airport:      parsed_data["arrival_airport"],
+        departure_datetime:   parsed_data["flight_date"].present? ? Time.zone.parse(parsed_data["flight_date"]) : nil,
+        arrival_datetime:     nil, # Solo se rellena si el usuario lo confirma manualmente en la revisión
+        departure_country_id: dep_country&.id,
+        arrival_country_id:   arr_country&.id,
+        status:               confidence_result[:status].to_s,
+        parsed_data:          parsed_data,
+        updated_at:           Time.current
+      )
+      ticket.reload
 
-    { success: true, ticket: ticket, confidence_level: confidence_result[:level],
-      launch_modal: confidence_result[:launch_modal] }
+      { success: true, ticket: ticket, confidence_level: confidence_result[:level],
+        launch_modal: confidence_result[:launch_modal] }
+    end
   rescue JSON::ParserError, StandardError => e
     error_message = e.message
 

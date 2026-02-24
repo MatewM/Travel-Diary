@@ -133,7 +133,10 @@ RSpec.describe ParseTicketService do
         expect(ticket.arrival_datetime).to be_nil
         expect(ticket.departure_country_id).to eq madrid.country.id
         expect(ticket.arrival_country_id).to eq london.country.id
-        expect(ticket.parsed_data).to eq bcbp_data.stringify_keys.transform_values { |v| v.is_a?(Symbol) ? v.to_s : v }
+        expected_parsed_data = bcbp_data.stringify_keys.transform_values { |v| v.is_a?(Symbol) ? v.to_s : v }
+        expected_parsed_data["launch_modal"] = false  # autoverified no lanza modal
+        expect(ticket.parsed_data).to eq expected_parsed_data
+        expect(ticket.parsed_data["launch_modal"]).to be false
       end
     end
 
@@ -169,6 +172,7 @@ RSpec.describe ParseTicketService do
         expect(ticket.flight_number).to eq 'UX6048'
         expect(ticket.departure_airport).to eq 'MAD'
         expect(ticket.arrival_airport).to eq 'LHR'
+        expect(ticket.parsed_data["launch_modal"]).to be true
       end
     end
 
