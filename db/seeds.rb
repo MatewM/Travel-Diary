@@ -20,3 +20,6 @@ countries_data.each do |attrs|
 end
 
 puts "  -> #{Country.count} countries created"
+
+# Importar datos completos del mundo desde OurAirports
+load Rails.root.join('db/seeds/countries_and_airports.rb')

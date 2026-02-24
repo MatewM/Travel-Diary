@@ -1,0 +1,36 @@
+<div class="flex items-center gap-4 px-4 py-4 border-b border-slate-100 last:border-0 hover:bg-slate-50 transition-colors">
+  <div class="w-10 h-10 rounded-full bg-white border border-slate-200 shadow-sm flex items-center justify-center text-xl flex-shrink-0">
+    <%= flag_emoji(row[:country]&.code) %>
+  </div>
+  <div class="flex-1 min-w-0">
+    <p class="font-medium text-slate-900"><%= row[:country]&.name %></p>
+    <div class="flex gap-2 mt-1">
+      <% if row[:type] == :inherited_trip %>
+        <span class="text-xs font-medium bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full">Heredado</span>
+      <% end %>
+      <% if row[:has_boarding_pass] %>
+        <span class="text-xs font-medium bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">✓ Verificado</span>
+      <% elsif row[:manually_entered] %>
+        <span class="text-xs font-medium bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full">Manual</span>
+      <% end %>
+    </div>
+  </div>
+  <div class="w-24 text-sm text-slate-500 text-center hidden sm:block">
+    <%= row[:start_date]&.strftime("%-d %b %Y")&.upcase %>
+  </div>
+  <div class="w-24 text-center hidden sm:block">
+    <% if row[:end_date].nil? || row[:end_date] >= Date.today %>
+      <span class="text-sm font-bold text-indigo-600">En curso</span>
+    <% else %>
+      <span class="text-sm text-slate-500"><%= row[:end_date].strftime("%-d %b %Y").upcase %></span>
+    <% end %>
+  </div>
+  <div class="w-16 text-right pr-2 flex-shrink-0">
+    <% if row[:end_date].present? && row[:end_date] < Date.today %>
+      <span class="text-2xl font-bold text-slate-800"><%= row[:days] %></span>
+      <span class="text-xs text-slate-400 block">DÍAS</span>
+    <% else %>
+      <span class="text-xs text-indigo-500 font-medium">En curso</span>
+    <% end %>
+  </div>
+</div>
