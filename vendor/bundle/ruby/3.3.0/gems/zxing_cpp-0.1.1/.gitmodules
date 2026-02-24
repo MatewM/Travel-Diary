@@ -1,3 +1,0 @@
-[submodule "vendor/zxing-cpp"]
-	path = ext/zxing/zxing-cpp
-	url = https://github.com/glassechidna/zxing-cpp.git
