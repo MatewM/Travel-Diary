@@ -1,0 +1,6 @@
+=== 0.1.0 / 2014-12-17
+
+* Initial version forked from zxing.rb
+
+  * Wraps a forked version of the previously deprecated ZXing C++ library.
+  * Initial release focuses on decoding.

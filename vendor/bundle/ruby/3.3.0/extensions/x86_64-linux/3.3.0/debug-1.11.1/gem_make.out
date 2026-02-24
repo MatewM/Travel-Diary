@@ -1,0 +1,19 @@
+current directory: /home/phunna/Travel-Diary/vendor/bundle/ruby/3.3.0/gems/debug-1.11.1/ext/debug
+/home/phunna/.local/share/mise/installs/ruby/3.3.10/bin/ruby extconf.rb
+creating Makefile
+
+current directory: /home/phunna/Travel-Diary/vendor/bundle/ruby/3.3.0/gems/debug-1.11.1/ext/debug
+make -j5 DESTDIR\= sitearchdir\=./.gem.20260224-66881-jqsmv8 sitelibdir\=./.gem.20260224-66881-jqsmv8 clean
+
+current directory: /home/phunna/Travel-Diary/vendor/bundle/ruby/3.3.0/gems/debug-1.11.1/ext/debug
+make -j5 DESTDIR\= sitearchdir\=./.gem.20260224-66881-jqsmv8 sitelibdir\=./.gem.20260224-66881-jqsmv8
+compiling debug.c
+compiling iseq_collector.c
+linking shared-object debug/debug.so
+
+current directory: /home/phunna/Travel-Diary/vendor/bundle/ruby/3.3.0/gems/debug-1.11.1/ext/debug
+make -j5 DESTDIR\= sitearchdir\=./.gem.20260224-66881-jqsmv8 sitelibdir\=./.gem.20260224-66881-jqsmv8 install
+/usr/bin/install -c -m 0755 debug.so ./.gem.20260224-66881-jqsmv8/debug
+
+current directory: /home/phunna/Travel-Diary/vendor/bundle/ruby/3.3.0/gems/debug-1.11.1/ext/debug
+make DESTDIR\= sitearchdir\=./.gem.20260224-66881-jqsmv8 sitelibdir\=./.gem.20260224-66881-jqsmv8 clean

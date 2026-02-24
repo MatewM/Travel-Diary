@@ -1,0 +1,30 @@
+current directory: /home/phunna/Travel-Diary/vendor/bundle/ruby/3.3.0/gems/bcrypt_pbkdf-1.1.2/ext/mri
+/home/phunna/.local/share/mise/installs/ruby/3.3.10/bin/ruby extconf.rb
+creating Makefile
+
+current directory: /home/phunna/Travel-Diary/vendor/bundle/ruby/3.3.0/gems/bcrypt_pbkdf-1.1.2/ext/mri
+make -j5 DESTDIR\= sitearchdir\=./.gem.20260224-66881-joaium sitelibdir\=./.gem.20260224-66881-joaium clean
+
+current directory: /home/phunna/Travel-Diary/vendor/bundle/ruby/3.3.0/gems/bcrypt_pbkdf-1.1.2/ext/mri
+make -j5 DESTDIR\= sitearchdir\=./.gem.20260224-66881-joaium sitelibdir\=./.gem.20260224-66881-joaium
+compiling bcrypt_pbkdf.c
+compiling bcrypt_pbkdf_ext.c
+compiling explicit_bzero.c
+compiling blowfish.c
+compiling hash_sha512.c
+bcrypt_pbkdf_ext.c: In function ‘Init_bcrypt_pbkdf_ext’:
+bcrypt_pbkdf_ext.c:38:6: warning: old-style function definition [-Wold-style-definition]
+   38 | void Init_bcrypt_pbkdf_ext(){
+      |      ^~~~~~~~~~~~~~~~~~~~~
+At top level:
+cc1: note: unrecognized command-line option ‘-Wno-self-assign’ may have been intended to silence earlier diagnostics
+cc1: note: unrecognized command-line option ‘-Wno-parentheses-equality’ may have been intended to silence earlier diagnostics
+cc1: note: unrecognized command-line option ‘-Wno-constant-logical-operand’ may have been intended to silence earlier diagnostics
+linking shared-object bcrypt_pbkdf_ext.so
+
+current directory: /home/phunna/Travel-Diary/vendor/bundle/ruby/3.3.0/gems/bcrypt_pbkdf-1.1.2/ext/mri
+make -j5 DESTDIR\= sitearchdir\=./.gem.20260224-66881-joaium sitelibdir\=./.gem.20260224-66881-joaium install
+/usr/bin/install -c -m 0755 bcrypt_pbkdf_ext.so ./.gem.20260224-66881-joaium
+
+current directory: /home/phunna/Travel-Diary/vendor/bundle/ruby/3.3.0/gems/bcrypt_pbkdf-1.1.2/ext/mri
+make DESTDIR\= sitearchdir\=./.gem.20260224-66881-joaium sitelibdir\=./.gem.20260224-66881-joaium clean
