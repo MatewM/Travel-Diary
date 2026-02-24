@@ -37,7 +37,7 @@ class BcbpParserService
       parsed = parse(raw_string)
       return nil unless parsed
 
-      year, flight_date, date_status = resolve_flight_date(parsed, capture_date_str)
+      flight_date, date_status = resolve_flight_date(parsed, capture_date_str)
       return nil unless flight_date || date_status
 
       {
@@ -77,7 +77,7 @@ class BcbpParserService
         date_status = nil
       end
 
-      [year, flight_date, date_status]
+      [flight_date, date_status]
     end
   end
 end
