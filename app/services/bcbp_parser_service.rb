@@ -1,4 +1,3 @@
-gem 'zxing_cpp'
 require 'zxing'
 
 class BcbpParserService
@@ -8,7 +7,7 @@ class BcbpParserService
 
       begin
         require "zxing_cpp"
-        result = Zxing.read(filepath.to_s)
+        result = ZXing.decode(filepath.to_s)
         result.present? && !result.empty? ? result.first.text : nil
       rescue StandardError
         nil
@@ -88,8 +87,7 @@ class BcbpParserService
     end
 
     def extract(filepath, capture_date_str = nil)
-      # No longer restrict to jpg/jpeg/png so it works with pdfs in the spec
-      # return nil unless filepath.match?(/\.(jpg|jpeg|png)$/i)
+      return nil unless filepath.match?(/\.(jpg|jpeg|png)$/i)
 
       raw = decode_from_file(filepath)
       return nil unless raw

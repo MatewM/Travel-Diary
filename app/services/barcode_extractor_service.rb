@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require "zxing"
+require 'zxing'
 require "uri"
 require "cgi"
 class BarcodeExtractorService
@@ -105,7 +105,7 @@ class BarcodeExtractorService
 
     img = MiniMagick::Image.open(filepath)
     # Preprocesamiento agresivo para códigos QR pequeños
-    img.resize "400%"        # Ampliación extrema para QR pequeños
+    img.resize "200%"        # Ampliación extrema para QR pequeños
     img.colorspace "Gray"    # Conversión a escala de grises
     img.contrast             # Aumento de contraste
     img.normalize            # Normalización

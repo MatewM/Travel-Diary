@@ -15,7 +15,7 @@ end
 
 puts "=== Probando ZXing (Original) ==="
 begin
-  require "zxing"
+  require 'zxing'
   result = ZXing.decode(filepath.to_s)
   if result.present?
     puts "✅ ZXing éxito! Contenido:\n#{result}"

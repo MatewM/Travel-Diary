@@ -20,8 +20,25 @@ class ParseTicketService
       return { success: false, error: "No file attached" }
     end
 
-    filepath = ActiveStorage::Blob.service.path_for(attachment.blob.key)
+    # Preparar el archivo según su tipo
     mimetype = attachment.content_type
+    temp_file = nil
+    if mimetype.start_with?("image/")
+      # Para imágenes, usar el path directo sin conversión
+      filepath = ActiveStorage::Blob.service.path_for(attachment.blob.key)
+    elsif mimetype == "application/pdf"
+      # Para PDFs, convertir primera página a PNG temporal con crop al 40% superior
+      temp_file = convert_pdf_to_cropped_image(attachment.blob)
+      if temp_file
+        filepath = temp_file.path
+      else
+        # Fallback: usar PDF original si falla la conversión
+        filepath = ActiveStorage::Blob.service.path_for(attachment.blob.key)
+      end
+    else
+      # Tipo no soportado, usar path directo (fallback)
+      filepath = ActiveStorage::Blob.service.path_for(attachment.blob.key)
+    end
 
     # Extraer fecha usando ticket.created_at como base robusta
     extraction_result = ExifYearExtractorService.call(ticket)
@@ -31,7 +48,12 @@ class ParseTicketService
     Rails.logger.info "[ParseTicketService] Using ticket creation date=#{full_date}, target_year=#{target_year} for ticket #{@ticket_id}"
 
     # B. INTENTO 1 - Vía Barcode/QR
-    bcbp_result = BarcodeExtractorService.call(filepath, full_date.strftime('%Y-%m-%d'))
+    begin
+      bcbp_result = BarcodeExtractorService.call(filepath, full_date.strftime('%Y-%m-%d'))
+    ensure
+      # Limpiar archivo temporal si fue creado para PDF
+      temp_file&.unlink rescue nil
+    end
 
     if bcbp_result.present? && bcbp_result.with_indifferent_access[:source].to_s == "bcbp"
       parsed_data = bcbp_result.with_indifferent_access
@@ -128,6 +150,35 @@ class ParseTicketService
   end
 
   private
+
+  def convert_pdf_to_cropped_image(blob)
+    require "mini_magick"
+
+    pdf_path = ActiveStorage::Blob.service.path_for(blob.key)
+    temp_image = Tempfile.new(["pdf_page", ".png"])
+    temp_image.close
+
+    begin
+      # Convertir primera página del PDF a PNG
+      img = MiniMagick::Image.open("#{pdf_path}[0]") # [0] indica primera página
+      img.format "png"
+
+      # Aplicar crop al 40% superior para evitar QR publicitarios
+      width = img.width
+      height = img.height
+      crop_height = (height * 0.4).to_i
+
+      img.crop "#{width}x#{crop_height}+0+0"
+      img.write temp_image.path
+
+      temp_image
+    rescue => e
+      Rails.logger.error "ParseTicketService: PDF conversion failed: #{e.message}"
+      temp_image.unlink rescue nil
+      # Fallback: devolver nil para usar el PDF original
+      nil
+    end
+  end
 
   def normalize_datetime(value)
     return nil if value.blank?
