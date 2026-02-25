@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+
 require "zxing"
 require "uri"
 require "cgi"
@@ -99,7 +100,7 @@ class BarcodeExtractorService
 
   private_class_method def self.preprocess_image(filepath)
     require "mini_magick"
-    processed = Tempfile.new(["barcode_processed", ".png"])
+    processed = Tempfile.new([ "barcode_processed", ".png" ])
     processed.close
 
     img = MiniMagick::Image.open(filepath)
