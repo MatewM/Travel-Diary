@@ -8,7 +8,14 @@ class BarcodeExtractorService
     return nil if filepath.nil? || !File.exist?(filepath)
     Rails.logger.info "BarcodeExtractorService: File exists, #{File.size(filepath)} bytes"
 
-    raw_string = attempt_decode(filepath)
+    cropped_path = BarcodeRegionCropper.crop_top_region(filepath) rescue nil
+
+    raw_string =
+      if cropped_path && File.exist?(cropped_path)
+        attempt_decode(cropped_path) || attempt_decode(filepath)
+      else
+        attempt_decode(filepath)
+      end
 
     if raw_string.present?
       parse_and_return(raw_string, capturedate)
@@ -20,6 +27,8 @@ class BarcodeExtractorService
     Rails.logger.error "BarcodeExtractorService: FAILED #{e.message}"
     Rails.logger.error e.backtrace.first(3).join("\n")
     nil
+  ensure
+    File.delete(cropped_path) if cropped_path && File.exist?(cropped_path)
   end
 
   private_class_method def self.attempt_decode(filepath)
