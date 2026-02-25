@@ -46,7 +46,16 @@ class ParseTicketService
       # Añadir launch_modal al parsed_data para que el frontend lo lea correctamente
       parsed_data["launch_modal"] = ticket_status == :needs_review
 
-      departure_datetime = parsed_data[:flight_date].present? ? Time.zone.parse(parsed_data[:flight_date]) : nil
+      departure_datetime = if parsed_data[:flight_date].present?
+        begin
+          Time.zone.parse(parsed_data[:flight_date].to_s)
+        rescue ArgumentError => e
+          Rails.logger.warn "[ParseTicketService] Failed to parse flight_date '#{parsed_data[:flight_date]}': #{e.message}"
+          nil
+        end
+      else
+        nil
+      end
 
       ticket.update_columns(
         flight_number: parsed_data[:flight_number],
@@ -70,7 +79,7 @@ class ParseTicketService
     # C. INTENTO 2 - Fallback a Gemini
     begin
       raw_response = GeminiClient.parse_document(filepath, mimetype, target_year: target_year, capture_date: full_date.strftime('%Y-%m-%d'))
-      parsed_data  = JSON.parse(raw_response)
+      parsed_data  = JSON.parse(raw_response).with_indifferent_access
 
       confidence_result = ConfidenceCalculatorService.call(parsed_data)
 
@@ -90,7 +99,7 @@ class ParseTicketService
         airline:              parsed_data["airline"],
         departure_airport:    parsed_data["departure_airport"],
         arrival_airport:      parsed_data["arrival_airport"],
-        departure_datetime:   parsed_data["flight_date"].present? ? Time.zone.parse(parsed_data["flight_date"]) : nil,
+        departure_datetime:   parse_safe_datetime(parsed_data["flight_date"]),
         arrival_datetime:     nil, # Solo se rellena si el usuario lo confirma manualmente en la revisión
         departure_country_id: dep_country&.id,
         arrival_country_id:   arr_country&.id,
@@ -118,5 +127,18 @@ class ParseTicketService
     end
 
     { success: false, error: error_message }
+  end
+
+  private
+
+  def parse_safe_datetime(date_string)
+    return nil unless date_string.present?
+    
+    begin
+      Time.zone.parse(date_string.to_s)
+    rescue ArgumentError => e
+      Rails.logger.warn "[ParseTicketService] Failed to parse date '#{date_string}': #{e.message}"
+      nil
+    end
   end
 end

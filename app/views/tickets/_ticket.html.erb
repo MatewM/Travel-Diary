@@ -56,8 +56,10 @@
           <span class="font-medium text-slate-700"><%= ticket.flight_number %></span> ·
         <% end %>
         <%= ticket.departure_airport %> → <%= ticket.arrival_airport %>
-        <% if ticket.departure_datetime.present? %>
+        <% if ticket.departure_datetime.respond_to?(:strftime) %>
           · <%= ticket.departure_datetime.strftime("%d %b %Y") %>
+        <% elsif ticket.departure_datetime.is_a?(String) %>
+          · <%= Time.zone.parse(ticket.departure_datetime)&.strftime("%d %b %Y") rescue ticket.departure_datetime %>
         <% end %>
       </p>
 

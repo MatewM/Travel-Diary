@@ -1,12 +1,18 @@
+<%
+  # Forzamos el uso de variables locales, con fallback a las del controlador si existen
+  ticket = local_assigns.fetch(:ticket, @ticket)
+  issues = local_assigns.fetch(:issues, @issues || []).map(&:to_sym)
+  airports = local_assigns.fetch(:airports, @airports || [])
+%>
 <%= turbo_frame_tag "modal" do %>
   <div data-controller="modal"> <div class="fixed inset-0 z-50 flex items-center justify-center p-4">
 
-    <%# Backdrop %>
+    <%# Backdrop %}
     <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
          data-action="click->modal#close"
          aria-hidden="true"></div>
 
-    <%# Panel — two-column layout %>
+    <%# Panel — two-column layout %}
     <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh]
                 overflow-y-auto transform transition-all">
 
@@ -29,9 +35,9 @@
 
 
       <%# --- INICIO BLOQUE DE ADVERTENCIAS --- %>
-      <% 
+      <%
         # Aseguramos que los issues sean símbolos para compararlos fácilmente
-        _issues = local_assigns.fetch(:issues, []).map(&:to_sym) 
+        _issues = issues
         _year_source = local_assigns.fetch(:year_source, nil)
       %>
 

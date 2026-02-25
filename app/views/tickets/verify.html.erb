@@ -1,17 +1,23 @@
+<%
+  # Forzamos el uso de variables locales, con fallback a las del controlador si existen
+  ticket = local_assigns.fetch(:ticket, @ticket)
+  issues = local_assigns.fetch(:issues, @issues || []).map(&:to_sym)
+  airports = local_assigns.fetch(:airports, @airports || [])
+%>
 <%= turbo_frame_tag "modal" do %>
     <div data-controller="modal">
       <div class="fixed inset-0 z-50 flex items-center justify-center p-4">
 
-    <%# Backdrop %>
+    <%# Backdrop %}
     <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
          data-action="click->modal#close"
          aria-hidden="true"></div>
 
-    <%# Panel — two-column layout %>
+    <%# Panel — two-column layout %}
     <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh]
                 overflow-y-auto transform transition-all">
 
-      <%# Header %>
+      <%# Header %}
       <div class="flex items-center justify-between px-6 pt-6 pb-4 border-b border-slate-100">
         <div>
           <h3 class="text-lg font-semibold text-slate-900">Verificar billete</h3>
@@ -28,7 +34,7 @@
         </button>
       </div>
 
-      <% _issues = local_assigns.fetch(:issues, []) %>
+      <% _issues = issues %>
       <% if _issues.any? %>
         <% year_source ||= nil %>
         <%
@@ -55,7 +61,7 @@
       <div class="grid grid-cols-1 md:grid-cols-2 gap-0">
 
         <%# LEFT: ticket preview %>
-        <% first_file = @ticket.original_files.first %>
+        <% first_file = ticket.original_files.first %>
         <div class="p-4 border-b md:border-b-0 md:border-r border-slate-100 flex flex-col items-center justify-center bg-slate-50 rounded-bl-2xl min-h-96">
           <% if first_file %>
             <% if first_file.content_type.in?(%w[image/jpeg image/png]) %>
@@ -81,16 +87,16 @@
 
         <%# RIGHT: verification form %>
         <div class="p-6">
-          <%= form_with model: @ticket,
-                url: ticket_path(@ticket),
+          <%= form_with model: ticket,
+                url: ticket_path(ticket),
                 method: :patch,
                 data: { turbo_frame: "_top" },
                 class: "space-y-4" do |f| %>
 
             <%# Mostrar errores del modelo %>
-            <% if @ticket.errors.any? %>
+            <% if ticket.errors.any? %>
               <div class="p-3 mb-4 rounded-lg bg-red-50 text-red-700 text-sm">
-                ⚠️ <%= @ticket.errors.full_messages.to_sentence %>
+                ⚠️ <%= ticket.errors.full_messages.to_sentence %>
               </div>
             <% end %>
 
@@ -109,9 +115,9 @@
               <%= f.label :flight_number, "Número de vuelo", class: "block text-xs font-medium text-slate-600 mb-1" %>
               <div class="flex items-center gap-2">
                 <%= f.text_field :flight_number,
-                      class: "flex-1 rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 transition #{field_classes(:flight_number, @issues)}",
+                      class: "flex-1 rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 transition #{field_classes(:flight_number, issues)}",
                       placeholder: "ej. IB3456" %>
-                <span class="text-base"><%= field_icon(:flight_number, @issues) %></span>
+                <span class="text-base"><%= field_icon(:flight_number, issues) %></span>
               </div>
             </div>
 
@@ -120,9 +126,9 @@
               <%= f.label :airline, "Aerolínea", class: "block text-xs font-medium text-slate-600 mb-1" %>
               <div class="flex items-center gap-2">
                 <%= f.text_field :airline,
-                      class: "flex-1 rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 transition #{field_classes(:airline, @issues)}",
+                      class: "flex-1 rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 transition #{field_classes(:airline, issues)}",
                       placeholder: "ej. Iberia" %>
-                <span class="text-base"><%= field_icon(:airline, @issues) %></span>
+                <span class="text-base"><%= field_icon(:airline, issues) %></span>
               </div>
             </div>
 
@@ -134,9 +140,9 @@
                   <%= f.text_field :departure_airport,
                         list: "airports_datalist",
                         maxlength: 3,
-                        class: "flex-1 rounded-lg border px-3 py-2 text-sm uppercase focus:outline-none focus:ring-2 transition #{field_classes(:departure_airport, @issues)}",
+                        class: "flex-1 rounded-lg border px-3 py-2 text-sm uppercase focus:outline-none focus:ring-2 transition #{field_classes(:departure_airport, issues)}",
                         placeholder: "MAD" %>
-                  <span class="text-sm"><%= field_icon(:departure_airport, @issues) %></span>
+                  <span class="text-sm"><%= field_icon(:departure_airport, issues) %></span>
                 </div>
               </div>
               <div>
@@ -145,16 +151,16 @@
                   <%= f.text_field :arrival_airport,
                         list: "airports_datalist",
                         maxlength: 3,
-                        class: "flex-1 rounded-lg border px-3 py-2 text-sm uppercase focus:outline-none focus:ring-2 transition #{field_classes(:arrival_airport, @issues)}",
+                        class: "flex-1 rounded-lg border px-3 py-2 text-sm uppercase focus:outline-none focus:ring-2 transition #{field_classes(:arrival_airport, issues)}",
                         placeholder: "LHR" %>
-                  <span class="text-sm"><%= field_icon(:arrival_airport, @issues) %></span>
+                  <span class="text-sm"><%= field_icon(:arrival_airport, issues) %></span>
                 </div>
               </div>
             </div>
 
             <%# Datalist for airport IATA codes with name hints %>
             <datalist id="airports_datalist">
-              <% @airports.each do |airport| %>
+              <% airports.each do |airport| %>
                 <option value="<%= airport.iata_code %>"><%= airport.iata_code %> – <%= airport.name %></option>
               <% end %>
             </datalist>
@@ -164,8 +170,8 @@
               <%= f.label :departure_datetime, "Salida", class: "block text-xs font-medium text-slate-600 mb-1" %>
               <div class="flex items-center gap-2">
                 <%= f.datetime_local_field :departure_datetime, required: false,
-                      class: "flex-1 rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 transition #{field_classes(:departure_datetime, @issues)}" %>
-                <span class="text-base"><%= field_icon(:departure_datetime, @issues) %></span>
+                      class: "flex-1 rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 transition #{field_classes(:departure_datetime, issues)}" %>
+                <span class="text-base"><%= field_icon(:departure_datetime, issues) %></span>
               </div>
             </div>
 
@@ -174,8 +180,8 @@
               <%= f.label :arrival_datetime, "Llegada", class: "block text-xs font-medium text-slate-600 mb-1" %>
               <div class="flex items-center gap-2">
                 <%= f.datetime_local_field :arrival_datetime, required: false,
-                      class: "flex-1 rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 transition #{field_classes(:arrival_datetime, @issues)}" %>
-                <span class="text-base"><%= field_icon(:arrival_datetime, @issues) %></span>
+                      class: "flex-1 rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 transition #{field_classes(:arrival_datetime, issues)}" %>
+                <span class="text-base"><%= field_icon(:arrival_datetime, issues) %></span>
               </div>
             </div>
 
