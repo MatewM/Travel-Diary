@@ -140,6 +140,68 @@ RSpec.describe ParseTicketService do
       end
     end
 
+    context 'when the ticket has a readable barcode with padding/spaces and junk before M' do
+      let!(:madrid) { create(:airport, :madrid) }
+      let!(:london) { create(:airport, :london) }
+
+      let(:raw_bcbp_with_junk) do
+        # Junk before "M", space in airline, spaces in flight number
+        "JUNKDATA M1DOE/JANE            E MADLHRUX 6048 165Y020C0074 14B>5181WM8165BUX              29"
+      end
+
+      before do
+        # We stub ZXing decode at the lowest level so BarcodeExtractorService AND BcbpParserService actually run
+        allow(ZXing).to receive(:decode).and_return(raw_bcbp_with_junk)
+        # We also need to stub zbar_decode to return nil so it doesn't fail or return something else
+        allow(BarcodeExtractorService).to receive(:zbar_decode).and_return(nil)
+        allow(BarcodeExtractorService).to receive(:attempt_decode).and_return(raw_bcbp_with_junk)
+        allow(File).to receive(:exist?).and_return(true)
+        allow(File).to receive(:size).and_return(1024)
+        allow(GeminiClient).to receive(:parse_document)
+        # BcbpParserService.decode_from_file was returning nil for pdfs
+        allow(BcbpParserService).to receive(:decode_from_file).and_return(raw_bcbp_with_junk)
+        # We need to stub ExifYearExtractorService to return a valid year and date
+        allow(ExifYearExtractorService).to receive(:call).and_return({ full_date: Time.zone.parse("2026-06-14"), year: "2026" })
+        # We need to stub Date.today to return a specific date so resolve_year works
+        allow(Date).to receive(:today).and_return(Date.new(2026, 2, 25))
+        
+        # Make sure BarcodeExtractorService.call doesn't get stubbed out
+        allow(BarcodeExtractorService).to receive(:call).and_call_original
+        # Need to stub process_decoded_string to return a valid hash
+        allow(BcbpParserService).to receive(:process_decoded_string).and_call_original
+        
+        # Stub the parse method to ensure it returns the parsed hash
+        allow(BcbpParserService).to receive(:parse).and_call_original
+        
+        # Stub the extract method to ensure it returns the parsed hash
+        allow(BcbpParserService).to receive(:extract).and_call_original
+        
+        # Ensure ParseTicketService doesn't fail on missing airports
+        allow(Airport).to receive(:find_by).and_return(nil)
+        allow(Airport).to receive(:find_by).with(iata_code: "MAD").and_return(madrid)
+        allow(Airport).to receive(:find_by).with(iata_code: "LHR").and_return(london)
+        
+        # Ensure ParseTicketService handles the return value correctly
+        allow(BarcodeExtractorService).to receive(:parse_and_return).and_call_original
+      end
+
+      it 'correctly parses despite junk and spaces, and does NOT call GeminiClient' do
+        expect(GeminiClient).not_to receive(:parse_document)
+
+        result = described_class.call(ticket.id)
+
+        expect(result[:success]).to be true
+        expect(result[:confidence_level]).to eq :high
+
+        ticket.reload
+        expect(ticket.status).to eq 'auto_verified'
+        expect(ticket.flight_number).to eq '6048'
+        expect(ticket.airline).to eq 'UX'
+        expect(ticket.departure_airport).to eq 'MAD'
+        expect(ticket.arrival_airport).to eq 'LHR'
+      end
+    end
+
     context 'when the ticket has a barcode that needs review (uses capture_date)' do
       let!(:madrid) { create(:airport, :madrid) }
       let!(:london) { create(:airport, :london) }

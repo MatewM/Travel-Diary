@@ -296,15 +296,27 @@ PROMPT
 
     # Añadir bloque FILE METADATA para activar RULE 2 si tenemos fecha del archivo original
     if capture_date
-      capture_year = capture_date.year
-      prompt_text += "\n\n--- FILE METADATA (applies to RULE 2 above) ---\n" \
-                     "ORIGINAL FILE METADATA: This file was originally created/modified on #{capture_date.strftime('%Y-%m-%d')} (extracted from EXIF, file system, or original metadata).\n" \
-                     "VALIDATION RULE: Flight dates within ±30 days of this original file date are considered reliable.\n" \
-                     "CONFIDENCE ASSIGNMENT: If the extracted flight date is within 30 days of #{capture_date.strftime('%Y-%m-%d')}, set:\n" \
-                     "- flight_date confidence: \"high\"\n" \
-                     "- year_source: \"metadata_match\"\n" \
-                     "- year_requires_verification: false\n" \
-                     "- Use #{capture_year} as the confirmed flight year"
+      parsed_date = capture_date
+      if parsed_date.is_a?(String)
+        begin
+          parsed_date = Time.zone.parse(parsed_date) || Date.parse(parsed_date)
+        rescue ArgumentError, TypeError
+          parsed_date = nil
+        end
+      end
+
+      if parsed_date.respond_to?(:year) && parsed_date.respond_to?(:strftime)
+        capture_year = parsed_date.year
+        formatted_date = parsed_date.strftime('%Y-%m-%d')
+        prompt_text += "\n\n--- FILE METADATA (applies to RULE 2 above) ---\n" \
+                       "ORIGINAL FILE METADATA: This file was originally created/modified on #{formatted_date} (extracted from EXIF, file system, or original metadata).\n" \
+                       "VALIDATION RULE: Flight dates within ±30 days of this original file date are considered reliable.\n" \
+                       "CONFIDENCE ASSIGNMENT: If the extracted flight date is within 30 days of #{formatted_date}, set:\n" \
+                       "- flight_date confidence: \"high\"\n" \
+                       "- year_source: \"metadata_match\"\n" \
+                       "- year_requires_verification: false\n" \
+                       "- Use #{capture_year} as the confirmed flight year"
+      end
     end
 
     prompt_text

@@ -131,5 +131,8 @@
       </div>
     <% end %>
     <%= yield %>
+
+    <%# === TURBO FRAME PARA EL MODAL (fuera del overflow-hidden del dashboard) === %>
+    <%= turbo_frame_tag :modal %>
   </body>
 </html>

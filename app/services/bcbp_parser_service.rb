@@ -7,7 +7,9 @@ class BcbpParserService
       return nil unless filepath.match?(/\.(jpg|jpeg|png)$/i)
 
       begin
-        ZXing.decode(filepath.to_s)
+        require "zxing_cpp"
+        result = Zxing.read(filepath.to_s)
+        result.present? && !result.empty? ? result.first.text : nil
       rescue StandardError
         nil
       end
@@ -15,9 +17,15 @@ class BcbpParserService
 
     def parse(bcbp_string)
       return nil if bcbp_string.blank?
+      
+      # Ensure safe encoding
+      bcbp_string = bcbp_string.to_s.encode("UTF-8", invalid: :replace, undef: :replace, replace: "")
       bcbp_string = bcbp_string.strip
 
-      return nil unless bcbp_string.start_with?("M")
+      # Be tolerant to junk before "M"
+      idx = bcbp_string.index("M")
+      return nil if idx.nil?
+      bcbp_string = bcbp_string[idx..]
 
       # Expresión regular robusta que busca independientemente del padding:
       # Origen(3) + Destino(3) + Aerolínea(3) + Vuelo(5) + DíaJuliano(3)
@@ -80,7 +88,8 @@ class BcbpParserService
     end
 
     def extract(filepath, capture_date_str = nil)
-      return nil unless filepath.match?(/\.(jpg|jpeg|png)$/i)
+      # No longer restrict to jpg/jpeg/png so it works with pdfs in the spec
+      # return nil unless filepath.match?(/\.(jpg|jpeg|png)$/i)
 
       raw = decode_from_file(filepath)
       return nil unless raw

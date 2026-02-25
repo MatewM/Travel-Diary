@@ -12,7 +12,9 @@ Para poner el proyecto en marcha, sigue estos pasos:
     cd Travel-Diary
 Instalar dependencias de sistema (Ubuntu/Debian):
 Necesitas Ruby (3.2+), PostgreSQL, ImageMagick, ZBar, Poppler y herramientas de compilación.
-    sudo apt-get update    sudo apt-get install -y ruby-full postgresql imagemagick libzbar-dev zbar-tools poppler-utils build-essential
+    sudo apt-get update    sudo apt-get install -y ruby-full 
+    sudo apt-get install -y imagemagick libzbar-dev
+    postgresql imagemagick libzbar-dev zbar-tools poppler-utils build-essential
 Instalar gemas de Ruby:
 Bundler gestiona las gemas del proyecto.
     gem install bundler    bundle install
