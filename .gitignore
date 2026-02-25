@@ -60,6 +60,5 @@ dump.rdb
 
     # Ignorar las gemas instaladas por Bundler
     /vendor/bundle/
+    vendor/bundle
 
-vendor/bundle/
-vendor/bundle/
