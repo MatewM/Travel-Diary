@@ -13,20 +13,31 @@ export default class extends Controller {
       e.stopPropagation() // Evita que el clic se propague a otros elementos
     }
 
-    // 1. Limpiamos el contenido visual
-    this.element.innerHTML = ""
+    // 1. Encontramos el turbo-frame que contiene este modal
+    const frame = this.element.closest("turbo-frame")
 
-    // 2. Quitamos el 'src' para que Turbo pueda volver a cargar el frame si clicamos otra vez
-    this.element.removeAttribute("src")
+    if (frame) {
+      // 2. Limpiamos el contenido del frame completamente para no dejar fondos
+      frame.innerHTML = ""
+      // 3. Quitamos el 'src' para que Turbo pueda volver a cargar el frame si clicamos otra vez
+      frame.removeAttribute("src")
+    }
 
-    // 3. Si la URL cambió a /verify, la devolvemos al dashboard
+    // 4. Si la URL cambió a /verify, la devolvemos al dashboard
     if (window.location.pathname.includes('/verify')) {
       window.history.pushState({}, "", "/dashboard")
     }
 
-    // 4. Remover overflow-hidden del body para permitir scroll del fondo
+    // 5. Remover overflow-hidden del body para permitir scroll del fondo
     document.body.classList.remove("overflow-hidden")
 
     console.log("Modal cerrado correctamente")
+  }
+
+  closeOutside(e) {
+    // Si el clic fue directamente en el contenedor exterior (el fondo oscuro)
+    if (e.target === this.element) {
+      this.close(e)
+    }
   }
 }

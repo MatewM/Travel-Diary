@@ -160,7 +160,9 @@ class ParseTicketJob < ApplicationJob
     )
 
     # 3. Abrir modal de revisión solo si launch_modal fue activado por ConfidenceCalculatorService
+    # Y NO es un estado que solo requiere visualización en la tabla (como need_review según petición del usuario)
     if (ticket.needs_review? || ticket.manual_required?) && (ticket.parsed_data || {})["launch_modal"] == true
+
       # Resaltar todos los campos con confidence != "high" (medium y low), no solo low
       raw_issues = (ticket.parsed_data || {}).dig("confidence")
                      &.select { |_, v| v != "high" }

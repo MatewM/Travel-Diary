@@ -44,7 +44,9 @@ class ParseTicketService
       ticket_status = parsed_data[:date_status] == :autoverified ? :auto_verified : :needs_review
 
       # Añadir launch_modal al parsed_data para que el frontend lo lea correctamente
-      parsed_data["launch_modal"] = ticket_status == :needs_review
+      # El usuario ha solicitado que para :needs_review NO se lance el modal automáticamente.
+      parsed_data["launch_modal"] = false
+
 
       departure_datetime = if parsed_data[:flight_date].present?
         # Asegúrate de usar Time.zone.parse para convertir el String en objeto Time
