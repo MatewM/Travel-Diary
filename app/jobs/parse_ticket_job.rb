@@ -100,16 +100,14 @@ class ParseTicketJob < ApplicationJob
         message: "ParseTicketService result",
         data: {
           ticket_id: ticket_id,
-          success: result[:success],
-          error: result[:error],
+          success: result.is_a?(Hash) ? result[:success] : nil,
+          error: result.is_a?(Hash) ? result[:error] : nil,
           # Añado aquí el parsed_data completo de Gemini
-          gemini_parsed_data: result[:ticket]&.parsed_data,
+          gemini_parsed_data: result.is_a?(Hash) && result[:ticket] ? result[:ticket].parsed_data : nil,
           # Y aquí el resultado del ConfidenceCalculatorService
-          confidence_calculator_result: ConfidenceCalculatorService.call(
-            result[:ticket]&.parsed_data || {}
-          ),
-          ticket_status: result[:ticket]&.status,
-          confidence_level: result[:confidence_level]
+          confidence_calculator_result: result.is_a?(Hash) && result[:ticket]&.parsed_data ? ConfidenceCalculatorService.call(result[:ticket].parsed_data) : nil,
+          ticket_status: result.is_a?(Hash) && result[:ticket] ? result[:ticket].status : nil,
+          confidence_level: result.is_a?(Hash) ? result[:confidence_level] : nil
         },
         timestamp: Time.now.to_i
       }.to_json)

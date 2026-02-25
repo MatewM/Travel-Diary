@@ -5,6 +5,10 @@ class ParseTicketService
   # El servicio lo calcula internamente.
   def self.call(ticket_id)
     new(ticket_id).call
+  rescue StandardError => e
+    Rails.logger.error "ParseTicketService: Unexpected error: #{e.message}"
+    Rails.logger.error e.backtrace.join("\n")
+    { success: false, error: "Unexpected error: #{e.message}" }
   end
 
   def initialize(ticket_id)

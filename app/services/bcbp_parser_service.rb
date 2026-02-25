@@ -1,4 +1,4 @@
-require 'zxing'
+require "zxing"
 
 class BcbpParserService
   class << self
@@ -16,7 +16,7 @@ class BcbpParserService
 
     def parse(bcbp_string)
       return nil if bcbp_string.blank?
-      
+
       # Ensure safe encoding
       bcbp_string = bcbp_string.to_s.encode("UTF-8", invalid: :replace, undef: :replace, replace: "")
       bcbp_string = bcbp_string.strip
@@ -27,16 +27,18 @@ class BcbpParserService
       bcbp_string = bcbp_string[idx..]
 
       # Expresión regular robusta que busca independientemente del padding:
-      # Origen(3) + Destino(3) + Aerolínea(3) + Vuelo(5) + DíaJuliano(3)
-      regex = /([A-Z]{3})([A-Z]{3})([A-Z0-9\s]{3})([A-Z0-9\s]{5})(\d{3})/
+      # Origen(3) + Destino(3) + Aerolínea(3) + Vuelo(5) + DíaJuliano(3) + DígitoAño(opcional)
+      # Nota: Usamos \d{1} en lugar de \d? para el año porque no podemos confiar en que la cadena termine ahi,
+      # y un ? vacio en medio de campos posicionales sin delimitador confunde al regex si hay mas string despues.
+      regex = /([A-Z]{3})([A-Z]{3})([A-Z0-9\s]{3})([A-Z0-9\s]{5})(\d{3})(\d{1})?/
       match = bcbp_string.match(regex)
 
       if match
-        # match[0] es la cadena encontrada. 
+        # match[0] es la cadena encontrada.
         # El nombre termina unos 8 caracteres antes del aeropuerto de origen (1 para ETI + 7 para PNR)
         match_start = bcbp_string.index(match[0])
-        name_end = [match_start - 8, 2].max
-        
+        name_end = [ match_start - 8, 2 ].max
+
         {
           passenger_name: bcbp_string[2...name_end].to_s.strip,
           departure_airport: match[1].strip.upcase,
@@ -44,7 +46,7 @@ class BcbpParserService
           airline: match[3].strip,
           flight_number: match[4].strip,
           julian_day: match[5].to_i,
-          year_digit: nil # Forzamos nil para que use la fecha del archivo original como fallback
+          year_digit: match[6].present? ? match[6].to_i : nil
         }
       else
         # Fallback al estándar rígido original por si la regex falla
@@ -103,19 +105,19 @@ class BcbpParserService
         year = resolve_year(parsed[:year_digit])
         flight_date = Date.ordinal(year, parsed[:julian_day])
         date_status = :autoverified
-      elsif capture_date_str
+      elsif capture_date_str.present?.present?
         # Caso 2: El BCBP no incluye el año, usar metadata de capture_date
         capture_year = capture_date_str[0, 4].to_i
         flight_date = Date.ordinal(capture_year, parsed[:julian_day]) rescue nil
-        
+
         if flight_date
           # Convertir capture_date_str a Date para comparación
           capture_date = Date.parse(capture_date_str) rescue nil
-          
+
           if capture_date
             # Calcular diferencia absoluta en días entre capture_date y flight_date
             days_diff = (capture_date - flight_date).to_i.abs
-            
+
             # Si la captura fue dentro de ±3 días del vuelo -> autoverified
             # Si no -> needs_review
             date_status = (days_diff <= 3) ? :autoverified : :needs_review
@@ -130,7 +132,7 @@ class BcbpParserService
         date_status = nil
       end
 
-      [flight_date, date_status]
+      [ flight_date, date_status ]
     end
   end
 end
