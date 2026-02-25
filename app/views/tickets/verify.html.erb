@@ -1,3 +1,5 @@
+<% _issues    = local_assigns.fetch(:issues, []) %>
+<% year_source = local_assigns.fetch(:year_source, nil) %>
 <%
   # Forzamos el uso de variables locales, con fallback a las del controlador si existen
   ticket = local_assigns.fetch(:ticket, @ticket)
@@ -34,9 +36,7 @@
         </button>
       </div>
 
-      <% _issues = issues %>
-      <% if _issues.any? %>
-        <% year_source ||= nil %>
+        <% if _issues.any? %>
         <%
           year_msgs = {
             "estimated"     => "El año del vuelo fue estimado automáticamente. Por favor verifica que es correcto.",
@@ -101,13 +101,13 @@
             <% end %>
 
             <%# Helper: highlight field if it has issues %>
-            <% def field_classes(field_name, issues)
-                 issues.include?(field_name.to_s) ?
+            <% def field_classes(field_name, _issues)
+                 _issues.include?(field_name.to_s) ?
                    "border-amber-400 bg-amber-50 focus:ring-amber-300" :
                    "border-emerald-300 bg-white focus:ring-emerald-200"
                end %>
-            <% def field_icon(field_name, issues)
-                 issues.include?(field_name.to_s) ? "⚠️" : "✓"
+            <% def field_icon(field_name, _issues)
+                 _issues.include?(field_name.to_s) ? "⚠️" : "✓"
                end %>
 
             <%# Flight number %>

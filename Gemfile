@@ -23,8 +23,8 @@ gem "view_component", "~> 3.10"
 gem "pdf-reader", "~> 2.12"
 gem "exifr"
 gem "zxing_cpp"
-gem "mini_magick"
-gem "zbar"
+gem "zbar"        # barcode scanning fallback (apt: libzbar-dev)
+gem "mini_magick" # image preprocessing for small barcodes (apt: imagemagick)
 
 gem "omniauth-google-oauth2", "~> 1.1"
 gem "omniauth-apple", "~> 1.3"

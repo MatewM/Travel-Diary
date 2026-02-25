@@ -46,16 +46,7 @@ class ParseTicketService
       # Añadir launch_modal al parsed_data para que el frontend lo lea correctamente
       parsed_data["launch_modal"] = ticket_status == :needs_review
 
-      departure_datetime = if parsed_data[:flight_date].present?
-        begin
-          Time.zone.parse(parsed_data[:flight_date].to_s)
-        rescue ArgumentError => e
-          Rails.logger.warn "[ParseTicketService] Failed to parse flight_date '#{parsed_data[:flight_date]}': #{e.message}"
-          nil
-        end
-      else
-        nil
-      end
+      departure_datetime = normalize_datetime(parsed_data[:flight_date])
 
       ticket.update_columns(
         flight_number: parsed_data[:flight_number],
@@ -99,7 +90,7 @@ class ParseTicketService
         airline:              parsed_data["airline"],
         departure_airport:    parsed_data["departure_airport"],
         arrival_airport:      parsed_data["arrival_airport"],
-        departure_datetime:   parse_safe_datetime(parsed_data["flight_date"]),
+        departure_datetime:   normalize_datetime(parsed_data["flight_date"]),
         arrival_datetime:     nil, # Solo se rellena si el usuario lo confirma manualmente en la revisión
         departure_country_id: dep_country&.id,
         arrival_country_id:   arr_country&.id,
@@ -131,14 +122,21 @@ class ParseTicketService
 
   private
 
-  def parse_safe_datetime(date_string)
-    return nil unless date_string.present?
-    
+  def normalize_datetime(value)
+    return nil if value.blank?
+    return value if value.is_a?(Time) || value.is_a?(DateTime) ||
+                    value.is_a?(ActiveSupport::TimeWithZone)
+    return value.to_time if value.is_a?(Date)
+    return nil unless value.is_a?(String)
     begin
-      Time.zone.parse(date_string.to_s)
-    rescue ArgumentError => e
-      Rails.logger.warn "[ParseTicketService] Failed to parse date '#{date_string}': #{e.message}"
-      nil
+      Time.zone.parse(value)
+    rescue ArgumentError, TypeError
+      begin
+        DateTime.parse(value).in_time_zone
+      rescue ArgumentError, TypeError
+        Rails.logger.warn "ParseTicketService: Cannot parse datetime: #{value.inspect}"
+        nil
+      end
     end
   end
 end

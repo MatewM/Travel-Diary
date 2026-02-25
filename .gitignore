@@ -58,7 +58,7 @@
 !/app/assets/builds/.keep
 dump.rdb
 
-    # Ignorar las gemas instaladas por Bundler
-    /vendor/bundle/
-    vendor/bundle
+# Ignorar las gemas instaladas por Bundler
+/vendor/bundle/
+vendor/bundle
 
