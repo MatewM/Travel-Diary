@@ -54,6 +54,13 @@ class BarcodeExtractorService
       Rails.logger.info "BarcodeExtractorService: [2] ZBar found nothing on original"
     end
 
+    # Intento 2.5: crops sobre imagen original
+    Rails.logger.info "BarcodeExtractorService: [2.5] Trying crop variants on original image..."
+    crop_variants(filepath) do |crop_path, label|
+      result = try_decode_both(crop_path, label: "[2.5] #{label}")
+      return result if result.present?
+    end
+
     # Intentos 3 y 4: Con preprocesamiento de imagen
     Rails.logger.info "BarcodeExtractorService: [3-4] Trying with image preprocessing..."
     processed_path = nil
@@ -80,6 +87,13 @@ class BarcodeExtractorService
           return result
         else
           Rails.logger.info "BarcodeExtractorService: [4] ZBar found nothing on processed"
+        end
+
+        # Intento 4.5: crops sobre imagen preprocesada
+        Rails.logger.info "BarcodeExtractorService: [4.5] Trying crop variants on processed image..."
+        crop_variants(processed_path) do |crop_path, label|
+          result = try_decode_both(crop_path, label: "[4.5] #{label}")
+          return result if result.present?
         end
       else
         Rails.logger.warn "BarcodeExtractorService: Preprocessing failed, skipping attempts 3-4"
@@ -137,6 +151,68 @@ class BarcodeExtractorService
   rescue => e
     Rails.logger.warn "BarcodeExtractorService: MiniMagick preprocess failed: #{e.message}"
     File.delete(processed.path) if File.exist?(processed.path)
+    nil
+  end
+
+  # Genera recortes del fichero eliminando franjas (top/bottom/left/right)
+  # para cada porcentaje en `percents`. Cede cada tempfile al bloque
+  # y garantiza su eliminación en el ensure.
+  private_class_method def self.crop_variants(filepath, percents: [ 0.12, 0.22 ])
+    require "mini_magick"
+    temps = []
+
+    begin
+      img = MiniMagick::Image.open(filepath)
+      w = img.width
+      h = img.height
+
+      percents.each do |pct|
+        dx = (w * pct).round
+        dy = (h * pct).round
+
+        {
+          "crop_top_#{pct}"    => [ w,        h - dy,    0,     dy ],
+          "crop_bottom_#{pct}" => [ w,        h - dy,    0,     0  ],
+          "crop_left_#{pct}"   => [ w - dx,   h,         dx,    0  ],
+          "crop_right_#{pct}"  => [ w - dx,   h,         0,     0  ]
+        }.each do |label, (cw, ch, cx, cy)|
+          tmp = Tempfile.new([ "barcode_crop_#{label}", ".png" ])
+          tmp.close
+          temps << tmp
+
+          cropped = MiniMagick::Image.open(filepath)
+          cropped.crop "#{cw}x#{ch}+#{cx}+#{cy}"
+          cropped.write(tmp.path)
+
+          yield tmp.path, label
+        end
+      end
+    rescue => e
+      Rails.logger.warn "BarcodeExtractorService: crop_variants error: #{e.message}"
+    ensure
+      temps.each { |t| File.delete(t.path) if t && File.exist?(t.path) }
+    end
+  end
+
+  # Intenta decodificar filepath con ZXing (timeout 2s) y luego con zbar.
+  # Retorna el primer resultado válido o nil.
+  private_class_method def self.try_decode_both(filepath, label:)
+    begin
+      result = Timeout.timeout(2) { ZXing.decode(filepath) }
+      if result.present?
+        Rails.logger.info "BarcodeExtractorService: #{label} ZXing SUCCESS: #{result.gsub(/\s/, ' ')[0..79]}"
+        return result
+      end
+    rescue => e
+      Rails.logger.warn "BarcodeExtractorService: #{label} ZXing error: #{e.message}"
+    end
+
+    result = zbar_decode(filepath)
+    if result.present?
+      Rails.logger.info "BarcodeExtractorService: #{label} ZBar SUCCESS: #{result[0..79]}"
+      return result
+    end
+
     nil
   end
 
