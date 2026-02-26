@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require 'zxing'
+require "zxing"
 require "uri"
 require "cgi"
 class BarcodeExtractorService
@@ -114,12 +114,16 @@ class BarcodeExtractorService
       img = MiniMagick::Image.open(filepath)
 
       img.combine_options do |c|
+        c.auto_orient
         c.resize "200%"
+        c.strip
+        c.alpha "off"
+        c.background "white"
+        c.flatten
         c.colorspace "Gray"
-        c.contrast
-        c.normalize
-        c.threshold "50%"
-        c.sharpen "0x1"
+        c.depth "8"
+        c.resize "1600x1600>"
+        c.unsharp "0x0.75"
       end
 
       img.write(processed.path)
