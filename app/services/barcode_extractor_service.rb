@@ -34,10 +34,12 @@ class BarcodeExtractorService
 
     # Intentos 1 y 2: Motores originales
     Rails.logger.info "BarcodeExtractorService: [1] Trying ZXing on original image..."
-    Timeout.timeout(5) do
-      result = ZXing.decode(filepath.to_s) rescue nil
-      if result.present?
-        Rails.logger.info "BarcodeExtractorService: [1] ZXing SUCCESS on original: #{result[0..100]}..."
+  # Attempt 1: ZXing-CPP (soporta QR Code, PDF417, Aztec, DataMatrix)
+  begin
+    results = ZXing.decode(filepath.to_s)
+    if results.present? && !results.empty?
+      result = results.first.text
+      Rails.logger.info "BarcodeExtractorService: 1 ZXingCPP SUCCESS. Raw #{result.to_s.gsub(/\s/, ' ')[0..79]}"
         return result
       else
         Rails.logger.info "BarcodeExtractorService: [1] ZXing found nothing on original"
