@@ -12,7 +12,7 @@ Rails.application.routes.draw do
 
   get "dashboard", to: "dashboard#show", as: :dashboard
 
-  resources :tickets, only: %i[new create update] do
+  resources :tickets, only: %i[new create update destroy] do
     collection do
       post :process_tickets, path: "process"
     end

@@ -54,12 +54,14 @@ class ParseTicketService
     # B. INTENTO 1 - Vía Barcode/QR
     begin
       bcbp_result = BarcodeExtractorService.call(filepath, full_date.strftime('%Y-%m-%d'))
+      Rails.logger.info "[ParseTicketService] BarcodeExtractorService.call result for ticket #{@ticket_id}: #{bcbp_result.inspect}"
     ensure
       # Limpiar archivo temporal si fue creado para PDF
       temp_file&.unlink rescue nil
     end
 
-    if bcbp_result.present? && bcbp_result.with_indifferent_access[:source].to_s == "bcbp"
+    if bcbp_result.present? && bcbp_result.with_indifferent_access[:source].to_s == "bcbp_barcode"
+      Rails.logger.info "[ParseTicketService] BCBP result is valid, processing for ticket #{@ticket_id}"
       parsed_data = bcbp_result.with_indifferent_access
 
       # Buscar países por IATA usando los aeropuertos
@@ -100,6 +102,8 @@ class ParseTicketService
       return { success: true, ticket: ticket, confidence_level: confidence_level, launch_modal: ticket_status == :needs_review }
     end
 
+    Rails.logger.warn "[ParseTicketService] BCBP result failed validation for ticket #{@ticket_id}. bcbp_result: #{bcbp_result.inspect}"
+    
     # C. INTENTO 2 - Fallback a Gemini (COMENTADO: Solo permitir QR codes con librería local)
     # begin
     #   raw_response = GeminiClient.parse_document(filepath, mimetype, target_year: target_year, capture_date: full_date)
@@ -139,11 +143,20 @@ class ParseTicketService
     # Si llegamos aquí es porque BarcodeExtractorService retornó nil y Gemini está desactivado
     error_message = "No se detectó ningún código QR o de barras legible en el documento."
     
-    ticket.update_columns(
-      status: 'error',
-      parsed_data: { error: error_message },
-      updated_at: Time.current
-    )
+    Rails.logger.error "[ParseTicketService] No QR detected, updating ticket #{@ticket_id} to error status"
+    
+    begin
+      update_result = ticket.update_columns(
+        status: 'error',
+        parsed_data: { error: error_message },
+        updated_at: Time.current
+      )
+      Rails.logger.info "[ParseTicketService] Ticket #{@ticket_id} update_columns result: #{update_result}"
+      Rails.logger.info "[ParseTicketService] Ticket #{@ticket_id} status after update: #{ticket.reload.status}"
+    rescue => e
+      Rails.logger.error "[ParseTicketService] Failed to update ticket #{@ticket_id}: #{e.message}"
+      Rails.logger.error e.backtrace.join("\n")
+    end
     
     return { success: false, error: error_message }
 

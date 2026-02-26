@@ -8,9 +8,7 @@ class BarcodeExtractorService
     Rails.logger.info "BarcodeExtractorService: Starting for #{filepath}"
     return nil if filepath.nil? || !File.exist?(filepath)
 
-    # Timeout de 30 segundos para evitar que se cuelgue
     Timeout.timeout(30) do
-      # Intentamos decodificar directamente (si es PDF, ParseTicketService ya lo envió recortado)
       raw_string = attempt_decode(filepath)
 
       if raw_string.present?
@@ -29,23 +27,24 @@ class BarcodeExtractorService
   end
 
   private_class_method def self.attempt_decode(filepath)
-    processed_path = nil
     Rails.logger.info "BarcodeExtractorService: Starting attempt_decode for #{filepath}"
 
-    # Intentos 1 y 2: Motores originales
+    # Intento 1: ZXing directo sobre la imagen original.
+    # ZXing.decode retorna un String directamente (o nil si no decodifica).
     Rails.logger.info "BarcodeExtractorService: [1] Trying ZXing on original image..."
-  # Attempt 1: ZXing-CPP (soporta QR Code, PDF417, Aztec, DataMatrix)
-  begin
-    results = ZXing.decode(filepath.to_s)
-    if results.present? && !results.empty?
-      result = results.first.text
-      Rails.logger.info "BarcodeExtractorService: 1 ZXingCPP SUCCESS. Raw #{result.to_s.gsub(/\s/, ' ')[0..79]}"
+    begin
+      result = ZXing.decode(filepath.to_s)
+      if result.present?
+        Rails.logger.info "BarcodeExtractorService: [1] ZXingCPP SUCCESS. Raw #{result.gsub(/\s/, ' ')[0..79]}"
         return result
       else
         Rails.logger.info "BarcodeExtractorService: [1] ZXing found nothing on original"
       end
-    end rescue Rails.logger.warn "BarcodeExtractorService: [1] ZXing timeout on original image"
+    rescue => e
+      Rails.logger.warn "BarcodeExtractorService: [1] ZXing error on original: #{e.message}"
+    end
 
+    # Intento 2: ZBar CLI sobre imagen original
     Rails.logger.info "BarcodeExtractorService: [2] Trying ZBar on original image..."
     result = zbar_decode(filepath)
     if result.present?
@@ -55,21 +54,24 @@ class BarcodeExtractorService
       Rails.logger.info "BarcodeExtractorService: [2] ZBar found nothing on original"
     end
 
-    # Intentos 3 y 4: Con preprocesamiento (filtros de imagen)
+    # Intentos 3 y 4: Con preprocesamiento de imagen
     Rails.logger.info "BarcodeExtractorService: [3-4] Trying with image preprocessing..."
+    processed_path = nil
     begin
       processed_path = preprocess_image(filepath)
       if processed_path
         Rails.logger.info "BarcodeExtractorService: [3] Trying ZXing on processed image..."
-        Timeout.timeout(5) do
-          result = ZXing.decode(processed_path) rescue nil
+        begin
+          result = Timeout.timeout(5) { ZXing.decode(processed_path) }
           if result.present?
             Rails.logger.info "BarcodeExtractorService: [3] ZXing SUCCESS on processed: #{result[0..100]}..."
             return result
           else
             Rails.logger.info "BarcodeExtractorService: [3] ZXing found nothing on processed"
           end
-        end rescue Rails.logger.warn "BarcodeExtractorService: [3] ZXing timeout on processed image"
+        rescue => e
+          Rails.logger.warn "BarcodeExtractorService: [3] ZXing error on processed: #{e.message}"
+        end
 
         Rails.logger.info "BarcodeExtractorService: [4] Trying ZBar on processed image..."
         result = zbar_decode(processed_path)
@@ -91,7 +93,6 @@ class BarcodeExtractorService
   end
 
   private_class_method def self.zbar_decode(filepath)
-    # Timeout de 10 segundos para zbarimg
     Timeout.timeout(10) do
       out = `zbarimg --raw -q "#{filepath}" 2>/dev/null`.strip
       out.presence
@@ -113,26 +114,16 @@ class BarcodeExtractorService
       img = MiniMagick::Image.open(filepath)
 
       img.combine_options do |c|
-        # 1. Resize moderado: 150% o 200% es suficiente para capturas.
         c.resize "200%"
-
-        # 2. Gris: Fundamental para eliminar el azul de Ryanair/Volaris.
         c.colorspace "Gray"
-
-        # 3. Mejora de definición sin inventar píxeles:
         c.contrast
         c.normalize
-
-        # 4. Threshold equilibrado: 50% es el estándar para separar blanco de negro puro.
-        # El 40% que usas puede hacer que el gris oscuro se vuelva blanco erróneamente.
         c.threshold "50%"
-
-        # 5. Sharpen suave: 0x3 es muy fuerte, 0x1 es suficiente para definir bordes.
         c.sharpen "0x1"
       end
 
       img.write(processed.path)
-      Rails.logger.info "BarcodeExtractorService: Preprocessed (200% resize, 50% threshold) at #{processed.path}"
+      Rails.logger.info "BarcodeExtractorService: Preprocessed (200% + gray + threshold) at #{processed.path}"
       processed.path
     end
   rescue Timeout::Error
@@ -154,7 +145,7 @@ class BarcodeExtractorService
     end
 
     {
-      source:            :bcbp,
+      source:            :bcbp_barcode,
       flight_number:     result[:flight_number],
       airline:           result[:airline],
       departure_airport: result[:departure_airport],

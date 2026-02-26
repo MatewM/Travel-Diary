@@ -160,7 +160,14 @@ class TicketsController < ApplicationController
     @ticket.destroy
 
     respond_to do |format|
-      format.turbo_stream { render turbo_stream: turbo_stream.remove(dom_id) }
+      format.turbo_stream do
+        render turbo_stream: [
+          turbo_stream.remove(dom_id),
+          turbo_stream.replace("pending_analysis_banner", 
+            partial: "dashboard/pending_analysis_banner", 
+            locals: { pending_count: current_user.tickets.pending_parse.count })
+        ]
+      end
       format.html { redirect_to dashboard_path }
     end
   end

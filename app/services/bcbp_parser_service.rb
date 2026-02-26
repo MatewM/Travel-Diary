@@ -7,8 +7,8 @@ class BcbpParserService
 
       begin
         require "zxing_cpp"
-        result = ZXing.decode(filepath.to_s)
-        result.present? && !result.empty? ? result.first.text : nil
+        # ZXing.decode retorna un String directamente (o nil si falla)
+        ZXing.decode(filepath.to_s).presence
       rescue StandardError
         nil
       end
@@ -88,14 +88,6 @@ class BcbpParserService
       }
     end
 
-    def extract(filepath, capture_date_str = nil)
-      return nil unless filepath.match?(/\.(jpg|jpeg|png)$/i)
-
-      raw = decode_from_file(filepath)
-      return nil unless raw
-
-      process_decoded_string(raw, capture_date_str) # Llama al nuevo método
-    end
 
     private
 

@@ -117,6 +117,21 @@ class ParseTicketJob < ApplicationJob
     ticket = Ticket.find(ticket_id) # Recargar el ticket para asegurar el estado más reciente
     return unless ticket
 
+    # Safeguard: Si el ticket aún está en processing después del servicio, forzar a error
+    if ticket.processing?
+      Rails.logger.error "[ParseTicketJob] Ticket #{ticket_id} still in processing state after ParseTicketService, forcing to error"
+      ticket.update_columns(
+        status: "error", 
+        parsed_data: { 
+          error: "Processing failed - ticket remained in processing state",
+          service_result: result.inspect,
+          timestamp: Time.current.iso8601
+        },
+        updated_at: Time.current
+      )
+      ticket.reload
+    end
+
     # #region agent log - Final ticket status
     File.open("/home/phunna/.cursor/debug-ad4598.log", "a") do |f|
       f.puts({
