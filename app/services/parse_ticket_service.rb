@@ -136,6 +136,17 @@ class ParseTicketService
     #   { success: true, ticket: ticket, confidence_level: confidence_result[:level],
     #     launch_modal: confidence_result[:launch_modal] }
     # end
+    # Si llegamos aquí es porque BarcodeExtractorService retornó nil y Gemini está desactivado
+    error_message = "No se detectó ningún código QR o de barras legible en el documento."
+    
+    ticket.update_columns(
+      status: 'error',
+      parsed_data: { error: error_message },
+      updated_at: Time.current
+    )
+    
+    return { success: false, error: error_message }
+
   rescue JSON::ParserError, StandardError => e
     error_message = e.message
 

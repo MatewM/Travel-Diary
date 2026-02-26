@@ -107,22 +107,34 @@ class BarcodeExtractorService
     processed = Tempfile.new([ "barcode_processed", ".png" ])
     processed.close
 
-    Timeout.timeout(10) do
+    Timeout.timeout(40) do
       img = MiniMagick::Image.open(filepath)
-      # Preprocesamiento agresivo para códigos QR pequeños
-      img.resize "200%"        # Ampliación extrema para QR pequeños
-      img.colorspace "Gray"    # Conversión a escala de grises
-      img.contrast             # Aumento de contraste
-      img.normalize            # Normalización
-      img.threshold "25%"      # Threshold más bajo para códigos pequeños
-      img.sharpen "0x3"        # Sharpening más fuerte
-      img.write(processed.path)
 
-      Rails.logger.info "BarcodeExtractorService: Preprocessed image (400% resize, threshold 40%) at #{processed.path}"
+      img.combine_options do |c|
+        # 1. Resize moderado: 150% o 200% es suficiente para capturas.
+        c.resize "200%"
+
+        # 2. Gris: Fundamental para eliminar el azul de Ryanair/Volaris.
+        c.colorspace "Gray"
+
+        # 3. Mejora de definición sin inventar píxeles:
+        c.contrast
+        c.normalize
+
+        # 4. Threshold equilibrado: 50% es el estándar para separar blanco de negro puro.
+        # El 40% que usas puede hacer que el gris oscuro se vuelva blanco erróneamente.
+        c.threshold "50%"
+
+        # 5. Sharpen suave: 0x3 es muy fuerte, 0x1 es suficiente para definir bordes.
+        c.sharpen "0x1"
+      end
+
+      img.write(processed.path)
+      Rails.logger.info "BarcodeExtractorService: Preprocessed (200% resize, 50% threshold) at #{processed.path}"
       processed.path
     end
   rescue Timeout::Error
-    Rails.logger.warn "BarcodeExtractorService: MiniMagick preprocess timeout after 10 seconds"
+    Rails.logger.warn "BarcodeExtractorService: MiniMagick preprocess timeout after 40 seconds"
     File.delete(processed.path) if File.exist?(processed.path)
     nil
   rescue => e
