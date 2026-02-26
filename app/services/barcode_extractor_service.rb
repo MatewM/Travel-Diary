@@ -157,7 +157,7 @@ class BarcodeExtractorService
   # Genera recortes del fichero eliminando franjas (top/bottom/left/right)
   # para cada porcentaje en `percents`. Cede cada tempfile al bloque
   # y garantiza su eliminación en el ensure.
-  private_class_method def self.crop_variants(filepath, percents: [ 0.12, 0.22 ])
+  private_class_method def self.crop_variants(filepath, percents: [ 0.12, 0.25 ])
     require "mini_magick"
     temps = []
 
