@@ -9,19 +9,17 @@
 
 <div class="min-h-screen relative">
 
-  <%# === FONDO: imagen completa centrada === %>
-  <div class="absolute inset-0 z-0 pointer-events-none flex justify-center items-start opacity-30">
-    <%= image_tag "Backdash.png", class: "w-full max-w-4xl object-contain" %>
-  </div>
-
   <%# === CONTENIDO PRINCIPAL === %>
-  <div class="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 py-8 mt-12">
+  <div class="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 py-4 mt-2">
 
-    <%# --- 1. HEADER DE PÁGINA: Saludo + Botones --- %>
+    <%# === FONDO: imagen "atada" al contenido (se mueve con el contenedor) === %>
+    <div class="absolute top-0 left-0 z-0 pointer-events-none opacity-30">
+      <%= image_tag "Backdash.png", class: "w-[800px] max-w-none object-contain" %>
+    </div>
     <header class="flex flex-col sm:flex-row sm:items-end justify-between mb-8 gap-4">
 
       <%# IZQUIERDA: título y subtítulo %>
-      <div class="-mt-8">
+      <div class="-mt-2">
         <h1 class="text-2xl font-bold text-slate-900">
           Hola, <%= current_user.name&.split(' ')&.first || current_user.email.split("@").first %> 👋
         </h1>
@@ -119,7 +117,7 @@
         <span class="text-xs text-slate-400">Pendientes de procesar</span>
       </div>
 
-      <div id="tickets_list">
+      <div id="tickets_list" class="max-h-[720px] overflow-y-auto scrollbar-thin scrollbar-thumb-slate-200 scrollbar-track-transparent">
         <% if @tickets.any? %>
           <%= render @tickets %>
         <% else %>
@@ -166,9 +164,10 @@
                   <td class="px-6 py-4 text-slate-600"><%= trip.departure_date&.strftime("%d %b %Y") %></td>
                   <td class="px-6 py-4 text-slate-600"><%= trip.arrival_date&.strftime("%d %b %Y") %></td>
                   <td class="px-6 py-4">
-                    <% if trip.tickets.any? %>
+                    <% tickets_count = trip.tickets.size %>
+                    <% if tickets_count > 0 %>
                       <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700">
-                        <%= trip.tickets.count %> archivo(s)
+                        <%= tickets_count %> archivo(s)
                       </span>
                     <% else %>
                       <span class="text-slate-300">—</span>

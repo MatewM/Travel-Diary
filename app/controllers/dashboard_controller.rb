@@ -14,6 +14,7 @@ class DashboardController < ApplicationController
     year_end = Date.new(selected_year, 12, 31)
 
     @tickets = current_user.tickets
+                            .with_attached_original_files
                             .where(
                               "(departure_datetime BETWEEN ? AND ?) OR (departure_datetime IS NULL AND created_at BETWEEN ? AND ?)",
                               year_start.beginning_of_day, year_end.end_of_day,
@@ -23,9 +24,17 @@ class DashboardController < ApplicationController
 
     # Filtrar trips por año de salida
     @trips = current_user.trips
+                         .includes(:destination_country, :tickets)
                          .where(departure_date: year_start..year_end)
                          .order(departure_date: :asc)
 
-    @pending_parse_count = @tickets.count(&:pending_parse?)
+    @pending_parse_count = current_user.tickets
+                                       .where(status: "pending_parse")
+                                       .where(
+                                         "(departure_datetime BETWEEN ? AND ?) OR (departure_datetime IS NULL AND created_at BETWEEN ? AND ?)",
+                                         year_start.beginning_of_day, year_end.end_of_day,
+                                         year_start.beginning_of_day, year_end.end_of_day
+                                       )
+                                       .count
   end
 end

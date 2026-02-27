@@ -3,8 +3,14 @@ import { Controller } from "@hotwired/stimulus"
 export default class extends Controller {
   // Se ejecuta cada vez que el modal aparece
   connect() {
-    console.log("Modal conectado") // Esto te servirá para ver en la consola si el controlador vive
+    console.log("Modal conectado")
     document.body.classList.add("overflow-hidden")
+  }
+
+  // Se ejecuta cuando el elemento se elimina del DOM
+  disconnect() {
+    document.body.classList.remove("overflow-hidden")
+    console.log("Modal desconectado")
   }
 
   close(e) {

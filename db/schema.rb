@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_02_23_111525) do
+ActiveRecord::Schema[8.1].define(version: 2026_02_27_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -92,7 +92,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_23_111525) do
     t.uuid "user_id", null: false
     t.boolean "verified_by_user", default: false, null: false
     t.index ["arrival_country_id"], name: "index_tickets_on_arrival_country_id"
+    t.index ["created_at"], name: "index_tickets_on_created_at"
     t.index ["departure_country_id"], name: "index_tickets_on_departure_country_id"
+    t.index ["departure_datetime"], name: "index_tickets_on_departure_datetime"
     t.index ["status"], name: "index_tickets_on_status"
     t.index ["trip_id"], name: "index_tickets_on_trip_id"
     t.index ["user_id"], name: "index_tickets_on_user_id"
