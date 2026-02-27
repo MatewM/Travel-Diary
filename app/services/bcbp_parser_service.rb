@@ -84,7 +84,8 @@ class BcbpParserService
         airline:           parsed[:airline],
         passenger_name:    parsed[:passenger_name],
         flight_date:       flight_date,
-        date_status:       date_status
+        date_status:       date_status,
+        julian_day:        parsed[:julian_day]
       }
     end
 

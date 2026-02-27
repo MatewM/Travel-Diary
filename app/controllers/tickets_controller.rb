@@ -36,6 +36,10 @@ class TicketsController < ApplicationController
       # PRIORIDAD: Usar metadatos de JavaScript si están disponibles
       final_metadata = js_metadata.present? ? js_metadata.merge(file_metadata) : file_metadata
       
+      # Inyectar el año seleccionado del dashboard para el Job en segundo plano
+      selected_year = session[:selected_year]&.to_i || Date.current.year
+      final_metadata["selected_year"] = selected_year
+      
       Rails.logger.info "[TicketsController] Using metadata for #{file.original_filename}: #{final_metadata.inspect}"
       
       ticket = current_user.tickets.new(
