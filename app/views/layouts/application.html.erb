@@ -44,11 +44,15 @@
           <%# CENTRO-DERECHA: Selector de año + avatar %>
           <div class="flex items-center gap-4">
 
-            <%# Selector de año %>
-            <div class="hidden sm:flex bg-slate-100 p-1 rounded-lg border border-slate-200">
-              <button class="px-3 py-1 text-xs font-medium text-slate-500 hover:text-slate-900">2024</button>
-              <button class="px-3 py-1 text-xs font-bold bg-white shadow-sm rounded border border-slate-200 text-indigo-600">2025</button>
-              <button class="px-3 py-1 text-xs font-medium text-slate-500 hover:text-slate-900">2026</button>
+            <%# Selector de año — 4 años dinámicos %>
+            <div class="hidden sm:flex bg-slate-100 p-1 rounded-lg border border-slate-200 gap-0">
+              <% (Date.current.year - 2..Date.current.year + 1).each do |year| %>
+                <% is_selected = session[:selected_year]&.to_i == year || (session[:selected_year].nil? && year == Date.current.year) %>
+                <% btn_class = is_selected ? "px-4 py-2 text-sm font-semibold transition-all rounded-md bg-blue-600 text-white shadow-md hover:bg-blue-700" : "px-4 py-2 text-sm font-semibold transition-all rounded-md text-slate-600 hover:bg-slate-200 hover:text-slate-900" %>
+                <%= link_to year, dashboard_path(year: year), 
+                            data: { turbo: false },
+                            class: btn_class %>
+              <% end %>
             </div>
 
           <%# Dropdown usuario %>

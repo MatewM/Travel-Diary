@@ -1,4 +1,12 @@
-<% count = local_assigns.fetch(:pending_count) { current_user.tickets.pending_parse.count } %>
+<% selected_year = session[:selected_year]&.to_i || Date.current.year %>
+<% year_start = Date.new(selected_year, 1, 1) %>
+<% year_end = Date.new(selected_year, 12, 31) %>
+<% count = local_assigns.fetch(:pending_count) { 
+  current_user.tickets
+    .pending_parse
+    .where(created_at: year_start.beginning_of_day..year_end.end_of_day)
+    .count 
+} %>
 <% if count > 0 %>
   <div id="pending_analysis_banner"
        class="mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between
