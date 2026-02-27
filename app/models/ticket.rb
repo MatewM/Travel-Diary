@@ -23,6 +23,11 @@ class Ticket < ApplicationRecord
     error:            "error"
   }
 
+  # departure_datetime: representa la fecha y hora de salida del vuelo.
+  #   Si solo se dispone de la fecha (ej. desde un BCBP/QR), se guarda con la hora a 00:00.
+  # arrival_datetime: representa la fecha y hora de llegada.
+  #   Puede ser nulo si el extractor automático no lo detecta.
+  #   Se mantiene para permitir entrada manual por el usuario.
   validates :departure_airport, format: { with: /\A[A-Z]{3}\z/, message: "debe ser un código IATA de 3 letras mayúsculas" }, allow_blank: true
   validates :arrival_airport, format: { with: /\A[A-Z]{3}\z/, message: "debe ser un código IATA de 3 letras mayúsculas" }, allow_blank: true
 

@@ -158,21 +158,11 @@
 
             <%# Departure datetime %>
             <div>
-              <%= f.label :departure_datetime, "Salida", class: "block text-xs font-medium text-slate-600 mb-1" %>
+              <%= f.label :departure_datetime, "Fecha de salida", class: "block text-xs font-medium text-slate-600 mb-1" %>
               <div class="flex items-center gap-2">
-                <%= f.datetime_local_field :departure_datetime, required: false,
+                <%= f.date_field :departure_datetime, required: false,
                       class: "flex-1 rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 transition #{field_classes(:departure_datetime, issues)}" %>
                 <span class="text-base"><%= field_icon(:departure_datetime, issues) %></span>
-              </div>
-            </div>
-
-            <%# Arrival datetime %>
-            <div>
-              <%= f.label :arrival_datetime, "Llegada", class: "block text-xs font-medium text-slate-600 mb-1" %>
-              <div class="flex items-center gap-2">
-                <%= f.datetime_local_field :arrival_datetime, required: false,
-                      class: "flex-1 rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 transition #{field_classes(:arrival_datetime, issues)}" %>
-                <span class="text-base"><%= field_icon(:arrival_datetime, issues) %></span>
               </div>
             </div>
 

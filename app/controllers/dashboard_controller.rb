@@ -14,8 +14,12 @@ class DashboardController < ApplicationController
     year_end = Date.new(selected_year, 12, 31)
 
     @tickets = current_user.tickets
-                            .where(created_at: year_start.beginning_of_day..year_end.end_of_day)
-                            .order(created_at: :desc)
+                            .where(
+                              "(departure_datetime BETWEEN ? AND ?) OR (departure_datetime IS NULL AND created_at BETWEEN ? AND ?)",
+                              year_start.beginning_of_day, year_end.end_of_day,
+                              year_start.beginning_of_day, year_end.end_of_day
+                            )
+                            .order(Arel.sql("COALESCE(departure_datetime, created_at) DESC"))
 
     # Filtrar trips por año de salida
     @trips = current_user.trips

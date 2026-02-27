@@ -63,7 +63,7 @@
               <% when "weekday_match" %>
                 <li>El <b>año</b> fue deducido usando el día de la semana. Confírmalo, por favor.</li>
               <% else %>
-                <li>La <b>fecha y hora</b> están incompletas o la IA no está segura de haberlas leído bien.</li>
+                <li>La <b>fecha</b> está incompleta o la IA no está segura de haberla leído bien.</li>
               <% end %>
             <% end %>
 
@@ -177,21 +177,11 @@
 
             <%# Departure datetime %>
             <div>
-              <%= f.label :departure_datetime, "Salida", class: "block text-xs font-medium text-slate-600 mb-1" %>
+              <%= f.label :departure_datetime, "Fecha de salida", class: "block text-xs font-medium text-slate-600 mb-1" %>
               <div class="flex items-center gap-2">
-                <%= f.datetime_local_field :departure_datetime,
+                <%= f.date_field :departure_datetime,
                       class: "flex-1 rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 transition #{field_classes.(:departure_datetime)}" %>
                 <span class="text-base"><%= field_icon.(:departure_datetime) %></span>
-              </div>
-            </div>
-
-            <%# Arrival datetime %>
-            <div>
-              <%= f.label :arrival_datetime, "Llegada", class: "block text-xs font-medium text-slate-600 mb-1" %>
-              <div class="flex items-center gap-2">
-                <%= f.datetime_local_field :arrival_datetime,
-                      class: "flex-1 rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 transition #{field_classes.(:arrival_datetime)}" %>
-                <span class="text-base"><%= field_icon.(:arrival_datetime) %></span>
               </div>
             </div>
 
