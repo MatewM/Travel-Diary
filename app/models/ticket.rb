@@ -23,6 +23,10 @@ class Ticket < ApplicationRecord
     error:            "error"
   }
 
+  # Scope para ordenar billetes de forma determinista: más recientes primero
+  # Usa created_at como criterio principal (fecha de subida) e id como desempate
+  scope :recent_first, -> { order(created_at: :desc, id: :desc) }
+
   # departure_datetime: representa la fecha y hora de salida del vuelo.
   #   Si solo se dispone de la fecha (ej. desde un BCBP/QR), se guarda con la hora a 00:00.
   # arrival_datetime: representa la fecha y hora de llegada.

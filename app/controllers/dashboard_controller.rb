@@ -20,7 +20,7 @@ class DashboardController < ApplicationController
                               year_start.beginning_of_day, year_end.end_of_day,
                               year_start.beginning_of_day, year_end.end_of_day
                             )
-                            .order(Arel.sql("COALESCE(departure_datetime, created_at) DESC"))
+                            .recent_first
 
     # Filtrar trips por año de salida
     @trips = current_user.trips
