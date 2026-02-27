@@ -21,6 +21,7 @@ gem "image_processing", "~> 1.2"
 gem "dotenv-rails", groups: %i[development test]
 gem "view_component", "~> 3.10"
 gem "pdf-reader", "~> 2.12"
+gem "rtesseract", "~> 3.1"
 gem "exifr"
 gem "zxing_cpp"
 gem "zbar"        # barcode scanning fallback (apt: libzbar-dev)

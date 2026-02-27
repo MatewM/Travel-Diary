@@ -169,9 +169,9 @@ class ParseTicketService
     # Determinar status basado en si la fecha viene del BCBP o de metadata
     ticket_status = parsed_data[:date_status] == :autoverified ? :auto_verified : :needs_review
 
-    # Si BCBP dice needs_review y tenemos filepath, intentar fallback OCR
-    if ticket_status == :needs_review && filepath.present? && target_year.present? && full_date.present?
-      Rails.logger.info "[ParseTicketService] BCBP marked needs_review, attempting OCR year fallback"
+    # Si el BCBP no trae dígito de año, intentar fallback OCR/metadata
+    if parsed_data[:year_digit].blank? && filepath.present? && target_year.present?
+      Rails.logger.info "[ParseTicketService] BCBP without year_digit, attempting OCR/metadata year fallback"
       ocr_result = try_ocr_year_fallback(ticket, filepath, parsed_data, target_year, full_date)
 
       if ocr_result.present?
@@ -182,6 +182,7 @@ class ParseTicketService
         parsed_data[:launch_modal] = ocr_result[:launch_modal]
         parsed_data[:ocr_year] = ocr_result[:ocr_year] if ocr_result[:ocr_year]
         parsed_data[:selected_year] = ocr_result[:selected_year] if ocr_result[:selected_year]
+        parsed_data[:metadata_year] = ocr_result[:metadata_year] if ocr_result[:metadata_year]
 
         ticket_status = ocr_result[:date_status] == :autoverified ? :auto_verified : :needs_review
       else
@@ -325,15 +326,60 @@ class ParseTicketService
 
     Rails.logger.info "[ParseTicketService] Attempting OCR year fallback for ticket #{@ticket_id}"
     ocr_text = OcrExtractorService.call(filepath)
-    return nil unless ocr_text.present?
+    ocr_year = ocr_text.present? ? extract_year_from_ocr(ocr_text) : nil
 
-    ocr_year = extract_year_from_ocr(ocr_text)
-    return nil unless ocr_year
+    # Leer el año seleccionado en el dashboard y normalizar a Integer
+    selected_year = if ticket.original_file_metadata&.dig("selected_year").present?
+      ticket.original_file_metadata.dig("selected_year").to_i
+    elsif target_year.present?
+      target_year.to_i
+    end
 
-    # Leer el año seleccionado en el dashboard
-    selected_year = ticket.original_file_metadata&.dig("selected_year")&.to_i || target_year
+    # Derivar año desde metadata real del archivo:
+    # prioridad: lastModified (screenshot/descarga) > creation_year > target_year
+    metadata_year = begin
+      creation_year = ticket.original_file_metadata&.dig("creation_year")
+      last_modified = ticket.original_file_metadata&.dig("lastModified")
 
-    Rails.logger.info "[ParseTicketService] OCR detected year #{ocr_year}, selected_year #{selected_year}"
+      if last_modified.present?
+        Time.at(last_modified.to_f / 1000.0).utc.year
+      elsif creation_year.present?
+        creation_year.to_i
+      else
+        target_year&.to_i
+      end
+    end
+
+    Rails.logger.info "[ParseTicketService] OCR detected year #{ocr_year}, selected_year #{selected_year}, metadata_year #{metadata_year}"
+
+    # Si no encontramos año en OCR, usar metadata para alertar discrepancias con el dashboard
+    if ocr_year.blank?
+      return nil unless metadata_year.present? && selected_year.present?
+
+      flight_date = Date.ordinal(metadata_year, bcbp_data[:julian_day]) rescue nil
+      return nil unless flight_date
+
+      if metadata_year == selected_year
+        Rails.logger.info "[ParseTicketService] No OCR year, metadata_year matches selected_year, marking as autoverified"
+        return {
+          flight_date: flight_date,
+          date_status: :autoverified,
+          launch_modal: false,
+          year_warning: false,
+          metadata_year: metadata_year
+        }
+      end
+
+      Rails.logger.warn "[ParseTicketService] No OCR year, metadata_year #{metadata_year} differs from selected_year #{selected_year}"
+      return {
+        flight_date: flight_date,
+        date_status: :needs_review,
+        launch_modal: true,
+        year_warning: true,
+        selected_year: selected_year,
+        metadata_year: metadata_year
+      }
+    end
 
     # Recalcular flight_date con el año detectado por OCR
     flight_date = Date.ordinal(ocr_year, bcbp_data[:julian_day]) rescue nil
@@ -347,7 +393,8 @@ class ParseTicketService
         flight_date: flight_date,
         date_status: :autoverified,
         launch_modal: false,
-        year_warning: false
+        year_warning: false,
+        metadata_year: metadata_year
       }
     else
       # Años no coinciden: mantener needs_review con aviso
@@ -358,7 +405,8 @@ class ParseTicketService
         launch_modal: true,
         year_warning: true,
         ocr_year: ocr_year,
-        selected_year: selected_year
+        selected_year: selected_year,
+        metadata_year: metadata_year
       }
     end
   end

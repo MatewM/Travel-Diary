@@ -232,7 +232,8 @@ class BarcodeExtractorService
       arrival_airport:   result[:arrival_airport],
       flight_date:       result[:flight_date]&.iso8601,
       date_status:       result[:date_status],
-      julian_day:        result[:julian_day]
+      julian_day:        result[:julian_day],
+      year_digit:        result[:year_digit]
     }
   rescue => e
     Rails.logger.warn "BarcodeExtractorService: BCBP parse failed: #{e.message}"
