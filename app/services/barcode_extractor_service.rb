@@ -143,10 +143,8 @@ class BarcodeExtractorService
       Rails.logger.info "BarcodeExtractorService: preprocess_variants base image #{w}x#{h}"
 
       variants = [
-        { scale: "400%", filter: nil,        label: "400" },
-        { scale: "600%", filter: nil,        label: "600" },
-        { scale: "400%", filter: "Lanczos",  label: "400_lanczos" },
-        { scale: "800%", filter: "Mitchell", label: "800_mitchell" }
+        { scale: "200%", filter: nil, label: "200" },
+        { scale: "400%", filter: nil, label: "400" }
       ]
 
       variants.each do |cfg|
@@ -184,11 +182,10 @@ class BarcodeExtractorService
     []
   end
 
-  # Genera recortes del fichero eliminando franjas (top/bottom/left/right) y,
-  # opcionalmente, recortes centrados. Para cada porcentaje en `percents`
-  # y cada factor en `center_keeps`, cede un tempfile al bloque y garantiza
+  # Genera recortes del fichero eliminando franjas (top/bottom/left/right)
+  # para cada porcentaje en `percents`. Cede un tempfile al bloque y garantiza
   # su eliminación en el ensure.
-  private_class_method def self.crop_variants(filepath, percents: [ 0.05, 0.10, 0.20, 0.30 ], center_keeps: [ 0.8, 0.6, 0.4 ])
+  private_class_method def self.crop_variants(filepath, percents: [ 0.12, 0.24, 0.4 ])
     require "mini_magick"
     temps = []
 
@@ -196,7 +193,7 @@ class BarcodeExtractorService
       img = MiniMagick::Image.open(filepath)
       w = img.width
       h = img.height
-      Rails.logger.info "BarcodeExtractorService: crop_variants base image #{w}x#{h}, percents=#{percents.inspect}, center_keeps=#{center_keeps.inspect}"
+      Rails.logger.info "BarcodeExtractorService: crop_variants base image #{w}x#{h}, percents=#{percents.inspect}"
 
       percents.each do |pct|
         dx = (w * pct).round
@@ -218,24 +215,6 @@ class BarcodeExtractorService
 
           yield tmp.path, label
         end
-      end
-
-      center_keeps.each do |keep|
-        cw = (w * keep).round
-        ch = (h * keep).round
-        cx = ((w - cw) / 2.0).round
-        cy = ((h - ch) / 2.0).round
-
-        label = "crop_center_#{keep}"
-        tmp = Tempfile.new([ "barcode_crop_#{label}", ".png" ])
-        tmp.close
-        temps << tmp
-
-        cropped = MiniMagick::Image.open(filepath)
-        cropped.crop "#{cw}x#{ch}+#{cx}+#{cy}"
-        cropped.write(tmp.path)
-
-        yield tmp.path, label
       end
     rescue => e
       Rails.logger.warn "BarcodeExtractorService: crop_variants error: #{e.message}"
