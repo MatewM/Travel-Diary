@@ -8,4 +8,21 @@ module ApplicationHelper
     return "🌍" unless code.match?(/\A[A-Z]{2}\z/)
     code.chars.map { |c| (0x1F1E6 + (c.ord - "A".ord)).chr(Encoding::UTF_8) }.join
   end
+
+  # Renderiza un icono de bandera circular para un País.
+  # Carga un asset SVG desde app/assets/images/flags/{code}.svg
+  # Si el asset no existe, renderiza un emoji como fallback.
+  def country_flag_icon(country, size: "w-10 h-10")
+    return nil if country.blank?
+
+    flag_code = country.code.downcase
+    flag_path = "flags/#{flag_code}.svg"
+
+    image_tag(
+      flag_path,
+      alt: country.name,
+      class: "#{size} rounded-full object-cover shadow-sm flex-shrink-0",
+      title: country.name
+    )
+  end
 end

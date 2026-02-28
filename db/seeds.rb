@@ -1,4 +1,11 @@
-puts "Seeding countries..."
+puts "Seeding countries and airports..."
+
+# ──────────────────────────────────────────────────────────────
+# FASE 1: Precarga de países de interés fiscal (opcional pero recomendada)
+# ──────────────────────────────────────────────────────────────
+# Estos países reciben configuración fiscal pre-cargada.
+# Luego, countries_and_airports.rb descargará TODOS los países del mundo
+# usando find_or_initialize_by, sin tocar los que ya existen.
 
 countries_data = [
   { name: "Spain",          code: "ES", continent: "Europe", min_days_required: 183, max_days_allowed: 183 },
@@ -19,7 +26,12 @@ countries_data.each do |attrs|
   end
 end
 
-puts "  -> #{Country.count} countries created"
+puts "  ✓ #{countries_data.length} países base configurados"
 
-# Importar datos completos del mundo desde OurAirports
+# ──────────────────────────────────────────────────────────────
+# FASE 2: Descarga de todos los países y aeropuertos desde OurAirports
+# ──────────────────────────────────────────────────────────────
+# Cargar db/seeds/countries_and_airports.rb que:
+#   1. Descarga todos los países (~250 filas) y crea los que no existen
+#   2. Descarga todos los aeropuertos grandes/medianos y asigna su país
 load Rails.root.join('db/seeds/countries_and_airports.rb')

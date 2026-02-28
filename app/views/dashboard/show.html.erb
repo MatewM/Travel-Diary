@@ -154,9 +154,8 @@
               <% @trips.each do |trip| %>
                 <tr class="hover:bg-slate-50 transition-colors">
                   <td class="pl-4 pr-2 py-4">
-                    <div class="w-10 h-10 rounded-full bg-slate-100 border border-slate-200
-                                flex items-center justify-center text-xl shadow-sm flex-shrink-0">
-                      <%= flag_emoji(trip.destination_country&.code) %>
+                    <div class="flex items-center justify-center">
+                      <%= country_flag_icon(trip.destination_country) %>
                     </div>
                   </td>
                   <td class="px-6 py-4 font-medium text-slate-900"><%= trip.title || "Viaje sin título" %></td>
